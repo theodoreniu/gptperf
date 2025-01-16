@@ -25,3 +25,7 @@ If you request 1000000 requests and 10 threads, you can run the following comman
 ```bash
 python py.py 1000000 10
 ```
+
+## 4. Check Reports
+
+You can find the reports in the `reports` directory.

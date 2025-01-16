@@ -94,8 +94,9 @@ class GptTask:
                         "a",
                     ) as f_log:
                         f_log.write(
-                            str(last_token_latency_ms)
-                            + "-------"
+                            "last_token_latency_ms: "
+                            + str(last_token_latency_ms)
+                            + " content: "
                             + delta.content
                             + "\n"
                         )
@@ -104,7 +105,11 @@ class GptTask:
                         "a",
                     ) as f_log:
                         f_log.write(
-                            str(request_latency_ms) + "-------" + delta.content + "\n"
+                            "request_latency_ms: "
+                            + str(request_latency_ms)
+                            + " content: "
+                            + delta.content
+                            + "\n"
                         )
 
                 if self.first_token_time is None:

@@ -64,9 +64,14 @@ if __name__ == "__main__":
         # count times
         times = len(data)
 
-        first_token_latency_ms = [item["first_token_latency_ms"] for item in data]
-        last_token_latency_ms = [item["last_token_latency_ms"] for item in data]
+        first_token_latency_ms = [
+            item["first_token_latency_ms"] for item in data]
+        last_token_latency_ms = [
+            item["last_token_latency_ms"] for item in data]
         response_latency_ms = [item["response_latency_ms"] for item in data]
+        cost_req_time_ms = [item['cost_req_time'] for item in data]
+        input_token_count = [item['input_token_count'] for item in data]
+        output_token_count = [item['output_token_count'] for item in data]
 
         tokens_every_second_data = []
         for item in data:
@@ -74,7 +79,8 @@ if __name__ == "__main__":
 
         characters_every_second_data = []
         for item in data:
-            characters_every_second_data.extend(item["characters_every_second_data"])
+            characters_every_second_data.extend(
+                item["characters_every_second_data"])
 
         with open(report_file, "a") as f:
             f.write(f"\n=================== base information ===================")
@@ -86,8 +92,10 @@ if __name__ == "__main__":
             f.write(f"\nDeployment type: Global Standard")
             f.write(f"\n2M tokens per minute quota available for your deployment")
             f.write(f"\n===================")
-            f.write(f"\nMin first token latency: {int(min(first_token_latency_ms))}")
-            f.write(f"\nMax first token latency: {int(max(first_token_latency_ms))}")
+            f.write(
+                f"\nMin first token latency: {int(min(first_token_latency_ms))}")
+            f.write(
+                f"\nMax first token latency: {int(max(first_token_latency_ms))}")
             f.write(f"\n===================")
             f.write(
                 f"\nMin last token latency from first token: {int(min(last_token_latency_ms))}"
@@ -99,9 +107,11 @@ if __name__ == "__main__":
             f.write(f"\nMin response latency: {int(min(response_latency_ms))}")
             f.write(f"\nMax response latency: {int(max(response_latency_ms))}")
             f.write(f"\n===================")
-            f.write(f"\nMin tokens every second: {int(min(tokens_every_second_data))}")
+            f.write(
+                f"\nMin tokens every second: {int(min(tokens_every_second_data))}")
             # f.write(f"\nAvg tokens every second: {int(avg(tokens_every_second_data))}")
-            f.write(f"\nMax tokens every second: {int(max(tokens_every_second_data))}")
+            f.write(
+                f"\nMax tokens every second: {int(max(tokens_every_second_data))}")
             f.write(f"\n===================")
             f.write(
                 f"\nMin characters every second: {int(min(characters_every_second_data))}"
@@ -183,5 +193,16 @@ if __name__ == "__main__":
             f.write(
                 f"\nP999 characters every second: {int(np.percentile(characters_every_second_data, 99.9))}"
             )
+            f.write(f"\n===================")
+            f.write(f"\nRequest Times: {len(cost_req_time_ms)}")
+            f.write(f"\nAvg latency ms: {int(np.mean(cost_req_time_ms))}")
+            f.write(
+                f"\nP50 latency ms: {int(np.percentile(cost_req_time_ms, 50))}")
+            f.write(
+                f"\nP99 latency ms: {int(np.percentile(cost_req_time_ms, 99))}")
+
+            f.write(f"\n===================")
+            f.write(f"\nInput tokens: {int(np.sum(input_token_count))}")
+            f.write(f"\nOutput tokens: {int(np.sum(output_token_count))}")
 
         feishu_text(report_file)

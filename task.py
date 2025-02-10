@@ -17,6 +17,19 @@ deployment_type = os.getenv("DEPLOYMENT_TYPE")
 source_location = os.getenv("SOURCE_LOCATION")
 target_location = os.getenv("TARGET_LOCATION")
 
+encoding = tiktoken.encoding_for_model(os.getenv("AZURE_MODEL_ID"))
+
+
+def num_tokens_from_messages(messages):
+    tokens_per_message = 3
+    num_tokens = 0
+    for message in messages:
+        num_tokens += tokens_per_message
+        for key, value in message.items():
+            num_tokens += len(encoding.encode(value))
+    num_tokens += 3
+    return num_tokens
+
 
 class GptTask:
 
@@ -47,6 +60,10 @@ class GptTask:
         self.characters_every_second_data = []
         self.tokens_every_second = {}
         self.tokens_every_second_data = []
+        self.input_token_count = 0
+        self.output_token_count = 0
+        self.start_req_time = None
+        self.end_req_time = None
 
     def latency(self):
         client = AzureOpenAI(
@@ -56,7 +73,14 @@ class GptTask:
             api_key=self.api_key,
         )
 
-        request_time = datetime.datetime.now()
+        self.start_req_time = datetime.datetime.now()
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": self.query},
+        ]
+
+        self.input_token_count = num_tokens_from_messages(messages)
 
         response = client.chat.completions.create(
             messages=[
@@ -81,7 +105,7 @@ class GptTask:
                     datetime.datetime.now() - last_token_time2
                 ).total_seconds() * 1000
                 request_latency_ms = (
-                    datetime.datetime.now() - request_time
+                    datetime.datetime.now() - self.start_req_time
                 ).total_seconds() * 1000
                 last_token_time2 = datetime.datetime.now()
 
@@ -141,6 +165,12 @@ class GptTask:
                         + len(delta.content)
                     )
                     print(delta.content, end="", flush=True)
+                    self.output_token_count += len(
+                        encoding.encode(chunk.choices[0].delta.content))
+
+        self.end_req_time = datetime.datetime.now()
+        self.cost_req_time = (
+            self.end_req_time - self.start_req_time).total_seconds() * 1000
 
         if self.first_token_time is not None:
             self.last_token_time = datetime.datetime.now()
@@ -150,7 +180,8 @@ class GptTask:
             self.response_latency_ms = (
                 self.last_token_time - self.task_created_at
             ).total_seconds() * 1000
-            self.tokens_every_second_data = list(self.tokens_every_second.values())
+            self.tokens_every_second_data = list(
+                self.tokens_every_second.values())
             self.characters_every_second_data = list(
                 self.characters_every_second.values()
             )
@@ -170,6 +201,9 @@ class GptTask:
                 "tokens_every_second_data": self.tokens_every_second_data,
                 # "characters_every_second": self.characters_every_second,
                 "characters_every_second_data": self.characters_every_second_data,
+                "cost_req_time": self.cost_req_time,
+                "input_token_count": self.input_token_count,
+                "output_token_count": self.output_token_count,
             }
         )
 

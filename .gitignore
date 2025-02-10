@@ -5,3 +5,4 @@ __pycache__
 *.jsonl
 *.report.txt
 *.log
+projects/

@@ -7,12 +7,9 @@ import yaml
 from yaml.loader import SafeLoader
 import streamlit_authenticator as stauth
 from typing import List
-from helper import is_admin
+from helper import is_admin, time_now
 from tables import TaskTable
-from task_loads import add_task, delete_task, load_all_tasks, queue_task, run_task
-import pandas as pd
-import datetime
-import uuid
+from task_loads import add_task, delete_task, load_all_tasks, queue_task
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
@@ -33,8 +30,8 @@ def create_task():
 
     task = TaskTable(
         status=0,
-        created_at=datetime.datetime.now().isoformat(),
-        enable_think=True
+        enable_think=True,
+        created_at=time_now(),
     )
 
     col1, col2 = st.columns(2)
@@ -148,7 +145,7 @@ def render_list():
                         st.success("Deleted")
                         st.session_state.tasks = load_all_tasks()
             with col2:
-                if task.status == 0:
+                if task.status != 1 and task.status != 2:
                     run_btn = st.button(
                         label="✅ Run", key=f"run_task_{task.id}")
                     if run_btn:
@@ -163,8 +160,10 @@ def render_list():
             if task.error_message:
                 st.error(task.error_message)
             st.write(f"azure_endpoint: `{task.azure_endpoint}`")
-            st.write(f"request_per_thread: `{task.request_per_thread}`")
             st.write(f"threads: `{task.threads}`")
+            st.write(f"request_per_thread: `{task.request_per_thread}`")
+            st.write(f"request_succeed: `{task.request_succeed}`")
+            st.write(f"request_failed: `{task.request_failed}`")
             st.write(f"created_at: `{task.created_at}`")
 
 

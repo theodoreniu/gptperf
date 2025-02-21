@@ -1,5 +1,6 @@
 import os
 import streamlit as st
+from datetime import datetime
 
 
 def is_admin():
@@ -13,3 +14,11 @@ def is_admin():
         return st.session_state["username"].lower() == "admin"
 
     return True
+
+
+def so_far_ms(time):
+    return time_now() - time
+
+
+def time_now():
+    return datetime.now().timestamp() * 1000

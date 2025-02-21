@@ -5,7 +5,7 @@ import os
 from typing import List
 from dotenv import load_dotenv
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from tables import TaskTable
@@ -22,6 +22,13 @@ sql_string = f'mysql+pymysql://{user}:{password}@{host}/{database}'
 engine = create_engine(sql_string)
 
 
+def truncate_table(table_name: str):
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    session.execute(text(f"TRUNCATE TABLE {table_name};"))
+    session.commit()
+
+
 def update_status(task: TaskTable, status: int):
     Session = sessionmaker(bind=engine)
     session = Session()
@@ -31,7 +38,17 @@ def update_status(task: TaskTable, status: int):
 
 
 def queue_task(task: TaskTable):
-    update_status(task, 1)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    session.query(TaskTable).filter(
+        TaskTable.id == task.id).update(
+            {
+                TaskTable.status: 1,
+                TaskTable.request_succeed: 0,
+                TaskTable.request_failed: 0,
+            }
+    )
+    session.commit()
 
 
 def run_task(task: TaskTable):

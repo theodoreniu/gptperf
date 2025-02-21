@@ -1,22 +1,22 @@
 import datetime
-import json
 import uuid
 from dotenv import load_dotenv
 from openai import AzureOpenAI
 import tiktoken
-
+from sqlalchemy import update
+from helper import so_far_ms, time_now
 from tables import TaskRequestChunkTable, TaskRequestTable
 from task_loads import TaskTable, sql_string
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
+import traceback
+
 load_dotenv()
 
 
 encoding = tiktoken.get_encoding("cl100k_base")
 
 engine = create_engine(sql_string)
-Session = sessionmaker(bind=engine)
-session = Session()
 
 
 def num_tokens_from_messages(task: TaskTable):
@@ -40,125 +40,127 @@ class TaskRuntime:
         thread_num: int,
     ):
         self.task = task
-        self.task_created_at = datetime.datetime.now()
-        self.first_token_latency_ms = None
         self.last_token_time = None
-        self.last_token_latency_ms = None
-        self.response_latency_ms = None
-        self.input_token_count = 0
-        self.output_token_count = 0
-        self.start_req_time = None
-        self.end_req_time = None
         self.thread_num = thread_num
-        self.request_id = uuid.uuid4()
 
     def latency(self):
-        print(
-            f"Task {self.task.source_location} -> {self.task.target_location} -> {self.task.deployment_type}"
-        )
+        print(f"Task {self.task.id}")
 
-        client = AzureOpenAI(
-            api_version=self.task.api_version,
-            azure_endpoint=self.task.azure_endpoint,
-            azure_deployment=self.task.deployment_name,
-            api_key=self.task.api_key,
-        )
+        Session = sessionmaker(bind=engine)
+        session = Session()
 
-        self.start_req_time = datetime.datetime.now()
-
-        self.input_token_count = num_tokens_from_messages(self.task)
-        encoding = tiktoken.encoding_for_model(self.task.model_id)
-        response = client.chat.completions.create(
-            messages=self.task.query,
-            model=self.task.model_id,
-            stream=True,
-        )
-
-        response_count = 0
-        self.last_token_time = datetime.datetime.now()
-        response_string = ""
-
-        for chunk in response:
-            if len(chunk.choices) > 0:
-                delta = chunk.choices[0].delta
-
-                if delta.content:
-                    response_string += delta.content
-                else:
-                    print("no content")
-
-                # if delta.content:
-                response_count += 1
-
-                if self.first_token_latency_ms is None:
-                    self.first_token_latency_ms = (
-                        datetime.datetime.now() - self.task_created_at
-                    ).total_seconds() * 1000
-
-                token_len = 0
-                characters_len = 0
-
-                if delta.role:
-                    print(delta.role + ": ", end="", flush=True)
-
-                if delta.content:
-                    token_len += len(encoding.encode(delta.content))
-                    characters_len += len(delta.content)
-
-                    print(delta.content, end="", flush=True)
-
-                    self.output_token_count += len(
-                        encoding.encode(chunk.choices[0].delta.content))
-
-                last_token_latency_ms = (
-                    datetime.datetime.now() - self.last_token_time
-                ).total_seconds() * 1000
-
-                request_latency_ms = (
-                    datetime.datetime.now() - self.start_req_time
-                ).total_seconds() * 1000
-
-                self.last_token_time = datetime.datetime.now()
-
-                session.add(TaskRequestChunkTable(
-                    task_id=self.task.id,
-                    thread_num=self.thread_num,
-                    request_id=self.request_id,
-                    chunk_index=response_count,
-                    chunk_content=delta.content,
-                    token_len=token_len,
-                    characters_len=characters_len,
-                    created_at=datetime.datetime.now().isoformat(),
-                    last_token_latency_ms=last_token_latency_ms,
-                    request_latency_ms=request_latency_ms
-                ))
-                session.commit()
-
-        self.end_req_time = datetime.datetime.now()
-        self.cost_req_time = (
-            self.end_req_time - self.start_req_time).total_seconds() * 1000
-
-        if self.first_token_latency_ms is not None:
-            self.last_token_latency_ms = (
-                datetime.datetime.now() - self.last_token_time
-            ).total_seconds() * 1000
-            self.response_latency_ms = (
-                datetime.datetime.now() - self.task_created_at
-            ).total_seconds() * 1000
-
-        session.add(TaskRequestTable(
-            id=self.request_id,
+        task_request = TaskRequestTable(
+            id=uuid.uuid4(),
             task_id=self.task.id,
             thread_num=self.thread_num,
-            response=response_string,
-            created_at=self.task_created_at.isoformat(),
-            completed_at=datetime.datetime.now().isoformat(),
-            output_token_count=self.output_token_count,
-            input_token_count=self.input_token_count,
-            first_token_latency_ms=self.first_token_latency_ms,
-            last_token_latency_ms=self.last_token_latency_ms,
-            response_latency_ms=self.response_latency_ms,
-            cost_req_time_ms=self.cost_req_time,
-            success=1,
-        ))
+            response="",
+            response_count=0,
+            input_token_count=num_tokens_from_messages(self.task),
+            created_at=time_now(),
+            output_token_count=0,
+        )
+
+        try:
+            encoding = tiktoken.encoding_for_model(self.task.model_id)
+            client = AzureOpenAI(
+                api_version=self.task.api_version,
+                azure_endpoint=self.task.azure_endpoint,
+                azure_deployment=self.task.deployment_name,
+                api_key=self.task.api_key,
+            )
+
+            task_request.start_req_time = time_now()
+
+            response = client.chat.completions.create(
+                messages=self.task.query,
+                model=self.task.model_id,
+                stream=True,
+            )
+
+            self.last_token_time = time_now()
+
+            for chunk in response:
+                if len(chunk.choices) > 0:
+
+                    task_chunk = TaskRequestChunkTable(
+                        task_id=self.task.id,
+                        thread_num=self.thread_num,
+                        request_id=task_request.id,
+                        token_len=0,
+                        characters_len=0,
+                        created_at=time_now(),
+                    )
+
+                    delta = chunk.choices[0].delta
+
+                    if delta.content:
+                        task_request.response += delta.content
+                    else:
+                        print("no content")
+
+                    # if delta.content:
+                    task_request.response_count += 1
+
+                    if not task_request.first_token_latency_ms:
+                        task_request.first_token_latency_ms = so_far_ms(
+                            task_request.created_at)
+
+                    if delta.role:
+                        print(delta.role + ": ", end="", flush=True)
+
+                    if delta.content:
+                        task_chunk.token_len += len(
+                            encoding.encode(delta.content))
+                        task_chunk.characters_len += len(delta.content)
+
+                        print(delta.content, end="", flush=True)
+
+                        task_request.output_token_count += len(
+                            encoding.encode(chunk.choices[0].delta.content))
+
+                    task_chunk.last_token_latency_ms = so_far_ms(
+                        self.last_token_time
+                    )
+
+                    task_chunk.request_latency_ms = so_far_ms(
+                        task_request.start_req_time
+                    )
+
+                    task_chunk.chunk_content = delta.content
+                    task_chunk.chunk_index = task_request.response_count
+
+                    self.last_token_time = time_now()
+
+                    session.add(task_chunk)
+                    session.commit()
+
+            task_request.end_req_time = time_now()
+            task_request.cost_req_time_ms = (
+                task_request.end_req_time - task_request.start_req_time)
+
+            if task_request.first_token_latency_ms:
+                task_request.last_token_latency_ms = so_far_ms(
+                    self.last_token_time
+                )
+
+                task_request.response_latency_ms = so_far_ms(
+                    task_request.created_at
+                )
+
+            task_request.success = 1
+            session.execute(
+                update(TaskTable).where(TaskTable.id == self.task.id).values(
+                    request_succeed=TaskTable.request_succeed + 1)
+            )
+        except Exception as e:
+            task_request.success = 0
+            task_request.response = f"{e}"
+            session.execute(
+                update(TaskTable).where(TaskTable.id == self.task.id).values(
+                    request_failed=TaskTable.request_failed + 1)
+            )
+            traceback.print_exc()
+
+        task_request.completed_at = time_now()
+        session.add(task_request)
         session.commit()

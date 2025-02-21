@@ -10,15 +10,10 @@ import numpy as np
 import traceback
 
 
-def create_and_run_task(task: TaskTable, thread_num: int):
-    task_runtime = TaskRuntime(task=task, thread_num=thread_num)
-    print(task_runtime.task_created_at)
-    task_runtime.latency()
-
-
 def safe_create_and_run_task(task: TaskTable, thread_num: int):
     try:
-        create_and_run_task(task, thread_num)
+        task_runtime = TaskRuntime(task=task, thread_num=thread_num)
+        task_runtime.latency()
     except Exception as e:
         error_task(task, {e})
         print(f"Task Failed: {e}")
@@ -35,7 +30,8 @@ def task_executor(task: TaskTable):
 
     with ThreadPoolExecutor(max_workers=task.threads) as executor:
         futures = [
-            executor.submit(safe_create_and_run_task, task, 1)
+            executor.submit(safe_create_and_run_task, task, thread_index + 1)
+            for thread_index in range(task.threads)
             for _ in range(task.request_per_thread)
         ]
 

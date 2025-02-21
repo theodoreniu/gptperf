@@ -58,7 +58,9 @@ def run_task(task: TaskTable):
 def error_task(task: TaskTable, message: str):
     Session = sessionmaker(bind=engine)
     session = Session()
-    session.query(TaskTable).filter(
+    session.query(
+        TaskTable
+    ).filter(
         TaskTable.id == task.id
     ).update(
         {
@@ -126,3 +128,17 @@ def load_queue_tasks() -> List[TaskTable]:
     session.close()
 
     return results
+
+
+def find_task(task_id: int) -> TaskTable | None:
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    task = session.query(
+        TaskTable
+    ).filter(
+        TaskTable.id == task_id
+    ).first()
+
+    session.close()
+
+    return task

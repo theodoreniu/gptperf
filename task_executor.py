@@ -6,18 +6,16 @@ from task_runtime import TaskRuntime
 from theodoretools.bot import feishu_text
 from concurrent.futures import ThreadPoolExecutor
 import numpy as np
-
+from config import aoai, ds
 import traceback
+import tiktoken
+from openai import AzureOpenAI
 
 
-def safe_create_and_run_task(task: TaskTable, thread_num: int):
-    try:
-        task_runtime = TaskRuntime(task=task, thread_num=thread_num)
-        task_runtime.latency()
-    except Exception as e:
-        error_task(task, {e})
-        print(f"Task Failed: {e}")
-        traceback.print_exc()
+def safe_create_and_run_task(task: TaskTable, thread_num: int,  encoding: tiktoken.Encoding, client):
+    task_runtime = TaskRuntime(
+        task=task, thread_num=thread_num, encoding=encoding, client=client)
+    task_runtime.latency()
 
 
 def task_executor(task: TaskTable):
@@ -28,9 +26,25 @@ def task_executor(task: TaskTable):
             task.feishu_token
         )
 
+    encoding = tiktoken.get_encoding("cl100k_base")
+
+    if task.model_type == aoai:
+        encoding = tiktoken.encoding_for_model(task.model_id)
+    else:
+        # todo: change to ds
+        encoding = tiktoken.encoding_for_model('gpt-4o')
+
+    client = AzureOpenAI(
+        api_version=task.api_version,
+        azure_endpoint=task.azure_endpoint,
+        azure_deployment=task.deployment_name,
+        api_key=task.api_key,
+    )
+
     with ThreadPoolExecutor(max_workers=task.threads) as executor:
         futures = [
-            executor.submit(safe_create_and_run_task, task, thread_index + 1)
+            executor.submit(safe_create_and_run_task, task,
+                            thread_index + 1, encoding, client)
             for thread_index in range(task.threads)
             for _ in range(task.request_per_thread)
         ]

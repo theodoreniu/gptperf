@@ -10,26 +10,12 @@ from task_loads import TaskTable, sql_string
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 import traceback
+from config import aoai, ds
 
 load_dotenv()
 
 
-encoding = tiktoken.get_encoding("cl100k_base")
-
 engine = create_engine(sql_string)
-
-
-def num_tokens_from_messages(task: TaskTable):
-    encoding = tiktoken.encoding_for_model(task.model_id)
-    messages = task.query
-    tokens_per_message = 3
-    num_tokens = 0
-    for message in messages:
-        num_tokens += tokens_per_message
-        for key, value in message.items():
-            num_tokens += len(encoding.encode(value))
-    num_tokens += 3
-    return num_tokens
 
 
 class TaskRuntime:
@@ -38,10 +24,25 @@ class TaskRuntime:
         self,
         task: TaskTable,
         thread_num: int,
+        encoding: tiktoken.Encoding,
+        client
     ):
         self.task = task
         self.last_token_time = None
         self.thread_num = thread_num
+        self.encoding = encoding
+        self.client = client
+
+    def num_tokens_from_messages(self, task: TaskTable):
+        messages = task.query
+        tokens_per_message = 3
+        num_tokens = 0
+        for message in messages:
+            num_tokens += tokens_per_message
+            for key, value in message.items():
+                num_tokens += len(self.encoding.encode(value))
+        num_tokens += 3
+        return num_tokens
 
     def latency(self):
         print(f"Task {self.task.id}")
@@ -55,23 +56,17 @@ class TaskRuntime:
             thread_num=self.thread_num,
             response="",
             response_count=0,
-            input_token_count=num_tokens_from_messages(self.task),
             created_at=time_now(),
             output_token_count=0,
         )
 
         try:
-            encoding = tiktoken.encoding_for_model(self.task.model_id)
-            client = AzureOpenAI(
-                api_version=self.task.api_version,
-                azure_endpoint=self.task.azure_endpoint,
-                azure_deployment=self.task.deployment_name,
-                api_key=self.task.api_key,
-            )
+            task_request.input_token_count = self.num_tokens_from_messages(
+                self.task)
 
             task_request.start_req_time = time_now()
 
-            response = client.chat.completions.create(
+            response = self.client.chat.completions.create(
                 messages=self.task.query,
                 model=self.task.model_id,
                 stream=True,
@@ -110,13 +105,13 @@ class TaskRuntime:
 
                     if delta.content:
                         task_chunk.token_len += len(
-                            encoding.encode(delta.content))
+                            self.encoding.encode(delta.content))
                         task_chunk.characters_len += len(delta.content)
 
                         print(delta.content, end="", flush=True)
 
                         task_request.output_token_count += len(
-                            encoding.encode(chunk.choices[0].delta.content))
+                            self.encoding.encode(chunk.choices[0].delta.content))
 
                     task_chunk.last_token_latency_ms = so_far_ms(
                         self.last_token_time

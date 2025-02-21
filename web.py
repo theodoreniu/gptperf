@@ -1,5 +1,8 @@
+
+from config import aoai, ds
 import logging
 import sys
+from time import sleep
 import streamlit as st
 import os
 from dotenv import load_dotenv
@@ -9,10 +12,9 @@ import streamlit_authenticator as stauth
 from typing import List
 from helper import is_admin, time_now
 from tables import TaskTable
-from task_loads import add_task, delete_task, load_all_tasks, queue_task
+from task_loads import add_task, delete_task, find_task, load_all_tasks, queue_task
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
-
 load_dotenv()
 
 notebook_dir = os.path.abspath("")
@@ -21,15 +23,12 @@ grandparent_dir = os.path.dirname(parent_dir)
 
 sys.path.append(grandparent_dir)
 
-aoai = 'AOAI'
-ds = 'DeepSeek'
-
 
 def create_task():
     st.markdown("### Create Task")
 
     task = TaskTable(
-        status=0,
+        status=1,
         enable_think=True,
         created_at=time_now(),
     )
@@ -127,53 +126,102 @@ def render_list():
     tasks: List[TaskTable] = load_all_tasks()
     st.session_state.tasks = tasks
 
-    col1, col2 = st.columns([1, 7])
-    with col1:
-        if st.button(f"Refresh Tasks ({len(st.session_state.tasks)})", key="refresh", icon="🔄"):
-            st.session_state.tasks = load_all_tasks()
+    if st.button(f"Refresh Tasks ({len(st.session_state.tasks)})", key="refresh", icon="🔄"):
+        st.session_state.tasks = load_all_tasks()
 
     for task in st.session_state.tasks:
-        with st.expander(label=f"{task.status_icon} {task.name}"):
 
-            col1, col2 = st.columns([1, 12])
-            with col1:
-                if task.status != 1 and task.status != 2 and is_admin():
-                    delete_btn = st.button(
-                        label="🗑️ Delete", key=f"delete_task_{task.id}")
-                    if delete_btn:
-                        delete_task(task)
-                        st.success("Deleted")
-                        st.session_state.tasks = load_all_tasks()
-            with col2:
-                if task.status != 1 and task.status != 2:
-                    run_btn = st.button(
-                        label="✅ Run", key=f"run_task_{task.id}")
-                    if run_btn:
-                        queue_task(task)
-                        st.success("Pendding")
-
-            st.write(f"id: `{task.id}`")
-            st.write(f"model_type: `{task.model_type}`")
-            st.write(f"name: `{task.name}`")
-            st.write(f"desc: `{task.desc}`")
-            st.write(f"status: {task.status_icon} `{task.status_text}`")
-            if task.error_message:
-                st.error(task.error_message)
-            st.write(f"azure_endpoint: `{task.azure_endpoint}`")
-            st.write(f"threads: `{task.threads}`")
-            st.write(f"request_per_thread: `{task.request_per_thread}`")
-            st.write(f"request_succeed: `{task.request_succeed}`")
-            st.write(f"request_failed: `{task.request_failed}`")
-            st.write(f"created_at: `{task.created_at}`")
+        st.markdown(
+            f'{task.status_icon} {task.name} <a href="/?task_id={task.id}" target="_blank">⚙️ Manage</a>',
+            unsafe_allow_html=True
+        )
 
 
-def page():
-    st.markdown("-------------------")
+def home_page():
+    st.markdown("--------------")
+    task_id = st.query_params.get("task_id", None)
+    if task_id:
+        return task_page(task_id)
     with st.expander(label=f"➕ Create Task"):
         create_task()
 
-    st.markdown("-------------------")
     render_list()
+
+
+def render_task(task_id: int):
+
+    st.session_state.task = find_task(task_id)
+
+    task = st.session_state.task
+
+    if not task:
+        st.error("task not found")
+        return
+
+    col1, col2 = st.columns([1, 12])
+    with col1:
+        if task.status != 1 and task.status != 2 and is_admin():
+            delete_btn = st.button(
+                label="🗑️ Delete", key=f"delete_task_{task.id}")
+            if delete_btn:
+                delete_task(task)
+                st.success("Deleted")
+                st.session_state.tasks = load_all_tasks()
+    with col2:
+        if task.status != 1 and task.status != 2:
+            run_btn = st.button(
+                label="✅ Run", key=f"run_task_{task.id}")
+            if run_btn:
+                queue_task(task)
+                st.success("Pendding")
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.write(f"name: `{task.name}`")
+    with col2:
+        st.write(f"desc: `{task.desc}`")
+    with col3:
+        st.write(f"created_at: `{task.created_at}`")
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.write(f"status: {task.status_icon} `{task.status_text}`")
+    with col2:
+        st.write(f"progress_percentage: `{task.progress_percentage}%`")
+    with col3:
+        st.write(f"model_id: `{task.model_id}`")
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.write(f"model_type: `{task.model_type}`")
+    with col2:
+        st.write(f"endpoint: `{task.azure_endpoint}`")
+    with col3:
+        st.write(f"api_key: `******************`")
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.write(f"threads: `{task.threads}`")
+    with col2:
+        st.write(f"request_per_thread: `{task.request_per_thread}`")
+    with col3:
+        st.write(f"request_total: `{task.request_per_thread * task.threads}`")
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.write(f"request_succeed: `{task.request_succeed}`")
+    with col2:
+        st.write(f"request_failed: `{task.request_failed}`")
+
+    st.write(f"system_prompt: `{task.system_prompt}`")
+    st.write(f"user_prompt: `{task.user_prompt}`")
+
+    if task.error_message:
+        st.error(task.error_message)
+
+
+def task_page(task_id: int):
+    render_task(task_id)
 
 
 if __name__ == "__main__":
@@ -189,7 +237,7 @@ if __name__ == "__main__":
     st.title(page_title)
 
     if not os.path.exists("./config.yaml"):
-        page()
+        home_page()
     else:
         with open("./config.yaml") as file:
             yaml_config = yaml.load(file, Loader=SafeLoader)
@@ -210,7 +258,7 @@ if __name__ == "__main__":
                 with col1:
                     authenticator.logout()
 
-                page()
+                home_page()
             elif st.session_state["authentication_status"] is False:
                 st.error("Username/password is incorrect")
             elif st.session_state["authentication_status"] is None:

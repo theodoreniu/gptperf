@@ -1,0 +1,2 @@
+aoai = 'AOAI'
+ds = 'DeepSeek'

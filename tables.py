@@ -54,6 +54,14 @@ class TaskTable(Base):
         ]
 
     @property
+    def progress_percentage(self):
+        request_total = self.threads * self.request_per_thread
+        request_done = self.request_failed + self.request_succeed
+
+        percentage = (request_done / request_total) * 100
+        return round(percentage)
+
+    @property
     def status_icon(self):
         if self.status == 0:
             return '🟤'

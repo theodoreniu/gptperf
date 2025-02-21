@@ -59,7 +59,10 @@ class TaskTable(Base):
         request_done = self.request_failed + self.request_succeed
 
         percentage = (request_done / request_total) * 100
-        return round(percentage)
+        result = round(percentage)
+        if result > 100:
+            result = 100
+        return result
 
     @property
     def status_icon(self):
@@ -102,7 +105,7 @@ class TaskRequestTable(Base):
     input_token_count = Column(Integer, default=0)
     output_token_count = Column(Integer, default=0)
     response = Column(String)
-    response_count = Column(Integer, default=0)
+    chunks_count = Column(Integer, default=0)
     first_token_latency_ms = Column(Integer)
     last_token_latency_ms = Column(Integer)
     response_latency_ms = Column(Integer)

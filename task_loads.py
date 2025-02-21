@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-from tables import TaskTable
+from tables import TaskRequestTable, TaskTable
 
 load_dotenv()
 
@@ -20,6 +20,14 @@ database = os.getenv("MYSQL_DB")
 sql_string = f'mysql+pymysql://{user}:{password}@{host}/{database}'
 
 engine = create_engine(sql_string)
+
+
+def sql(sql: str):
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    session.execute(text(sql))
+
+    return session.execute(text(sql))
 
 
 def truncate_table(table_name: str):
@@ -107,6 +115,22 @@ def load_all_tasks() -> List[TaskTable]:
         TaskTable
     ).order_by(
         TaskTable.created_at.desc()
+    ).all()
+
+    session.close()
+
+    return results
+
+
+def load_all_requests(task: TaskTable) -> List[TaskRequestTable]:
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    results = session.query(
+        TaskRequestTable
+    ).filter(
+        TaskRequestTable.task_id == task.id
+    ).order_by(
+        TaskRequestTable.created_at.desc()
     ).all()
 
     session.close()

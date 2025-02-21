@@ -55,7 +55,7 @@ class TaskRuntime:
             task_id=self.task.id,
             thread_num=self.thread_num,
             response="",
-            response_count=0,
+            chunks_count=0,
             created_at=time_now(),
             output_token_count=0,
         )
@@ -94,7 +94,7 @@ class TaskRuntime:
                         print("no content")
 
                     # if delta.content:
-                    task_request.response_count += 1
+                    task_request.chunks_count += 1
 
                     if not task_request.first_token_latency_ms:
                         task_request.first_token_latency_ms = so_far_ms(
@@ -122,7 +122,7 @@ class TaskRuntime:
                     )
 
                     task_chunk.chunk_content = delta.content
-                    task_chunk.chunk_index = task_request.response_count
+                    task_chunk.chunk_index = task_request.chunks_count
 
                     self.last_token_time = time_now()
 

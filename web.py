@@ -11,8 +11,11 @@ from yaml.loader import SafeLoader
 import streamlit_authenticator as stauth
 from typing import List
 from helper import is_admin, time_now
+from report import task_report
 from tables import TaskTable
-from task_loads import add_task, delete_task, find_task, load_all_tasks, queue_task
+from task_loads import add_task, delete_task, find_task, load_all_requests, load_all_tasks, queue_task
+import pandas as pd
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 load_dotenv()
@@ -138,7 +141,6 @@ def render_list():
 
 
 def home_page():
-    st.markdown("--------------")
     task_id = st.query_params.get("task_id", None)
     if task_id:
         return task_page(task_id)
@@ -148,11 +150,17 @@ def home_page():
     render_list()
 
 
-def render_task(task_id: int):
+def task_page(task_id: int):
 
     st.session_state.task = find_task(task_id)
 
     task = st.session_state.task
+
+    st.markdown(
+        f"## {task.status_icon} {task.name} `{task.status_text}` `{task.progress_percentage}%`")
+
+    if task.status > 1 and task.progress_percentage > 0:
+        st.progress(task.progress_percentage)
 
     if not task:
         st.error("task not found")
@@ -177,41 +185,20 @@ def render_task(task_id: int):
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.write(f"name: `{task.name}`")
-    with col2:
         st.write(f"desc: `{task.desc}`")
-    with col3:
-        st.write(f"created_at: `{task.created_at}`")
-
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.write(f"status: {task.status_icon} `{task.status_text}`")
-    with col2:
         st.write(f"progress_percentage: `{task.progress_percentage}%`")
-    with col3:
-        st.write(f"model_id: `{task.model_id}`")
-
-    col1, col2, col3 = st.columns(3)
-    with col1:
         st.write(f"model_type: `{task.model_type}`")
-    with col2:
-        st.write(f"endpoint: `{task.azure_endpoint}`")
-    with col3:
-        st.write(f"api_key: `******************`")
-
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.write(f"threads: `{task.threads}`")
-    with col2:
-        st.write(f"request_per_thread: `{task.request_per_thread}`")
-    with col3:
-        st.write(f"request_total: `{task.request_per_thread * task.threads}`")
-
-    col1, col2, col3 = st.columns(3)
-    with col1:
         st.write(f"request_succeed: `{task.request_succeed}`")
     with col2:
+        st.write(f"created_at: `{task.created_at}`")
+        st.write(f"model_id: `{task.model_id}`")
+        st.write(f"endpoint: `{task.azure_endpoint}`")
         st.write(f"request_failed: `{task.request_failed}`")
+    with col3:
+        st.write(f"api_key: `******************`")
+        st.write(f"threads: `{task.threads}`")
+        st.write(f"request_per_thread: `{task.request_per_thread}`")
+        st.write(f"request_total: `{task.request_per_thread * task.threads}`")
 
     st.write(f"system_prompt: `{task.system_prompt}`")
     st.write(f"user_prompt: `{task.user_prompt}`")
@@ -219,14 +206,34 @@ def render_task(task_id: int):
     if task.error_message:
         st.error(task.error_message)
 
+    if task.status > 1 and task.progress_percentage > 0:
 
-def task_page(task_id: int):
-    render_task(task_id)
+        with st.spinner(text="Loading Report..."):
+            try:
+                data = task_report(task)
+                df = pd.DataFrame.from_dict(data, orient='index')
+                st.markdown("## Report")
+                st.table(df)
+            except Exception as e:
+                print(e)
+
+        with st.spinner(text="Loading Requests..."):
+            try:
+                requests = load_all_requests(task)
+                list = []
+                for request in requests:
+                    list.append(request.__dict__)
+
+                if len(requests) > 0:
+                    st.markdown("## Requests")
+                    st.dataframe(list)
+            except Exception as e:
+                print(e)
 
 
 if __name__ == "__main__":
 
-    page_title = "LLM 压测服务"
+    page_title = "LLM Testing Platform"
     st.set_page_config(
         page_title=page_title,
         page_icon="avatars/favicon.ico",
@@ -254,7 +261,7 @@ if __name__ == "__main__":
                 st.write(
                     f'Welcome `{st.session_state["name"]}`')
 
-                col1, col2 = st.columns([1, 16])
+                col1, col2 = st.columns([10, 2])
                 with col1:
                     authenticator.logout()
 

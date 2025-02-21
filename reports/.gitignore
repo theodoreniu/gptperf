@@ -1,5 +1,0 @@
-# Ignore everything in this folder
-*
-
-# Allow this .gitignore file to be tracked
-!.gitignore

@@ -17,7 +17,7 @@ cp .env.example .env
 ## 3. Run
 
 ```bash
-python py.py {request_total} {num_threads}
+python py.py {request_per_thread} {num_threads}
 ```
 
 If you request 1000000 requests and 10 threads, you can run the following command:  

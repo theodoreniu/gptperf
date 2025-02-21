@@ -1,64 +1,54 @@
+
 import json
-import sys
-from dotenv import load_dotenv
-import numpy as np
 import os
-from task import GptTask
-from concurrent.futures import ThreadPoolExecutor
-import argparse
-from config import user_prompt
+from task_loads import TaskTable, error_task, succeed_task
+from task_runtime import TaskRuntime
 from theodoretools.bot import feishu_text
+from concurrent.futures import ThreadPoolExecutor
+import numpy as np
 
-load_dotenv()
-
-deployment_type = os.getenv("DEPLOYMENT_TYPE")
-source_location = os.getenv("SOURCE_LOCATION")
-target_location = os.getenv("TARGET_LOCATION")
+import traceback
 
 
-def create_and_run_task(log_file):
-    task = GptTask(
-        api_version=os.getenv("AZURE_API_VERSION"),
-        azure_endpoint=os.getenv("AZURE_API_BASE"),
-        azure_deployment=os.getenv("AZURE_API_DEPLOYMENT"),
-        api_key=os.getenv("AZURE_API_KEY"),
-        model=os.getenv("AZURE_MODEL_ID"),
-        query=user_prompt,
-        log_file=log_file,
-    )
-    task.latency()
-    task.append_to_jsonl()
+def create_and_run_task(task: TaskTable, thread_num: int):
+    task_runtime = TaskRuntime(task=task, thread_num=thread_num)
+    print(task_runtime.task_created_at)
+    task_runtime.latency()
 
 
-if __name__ == "__main__":
-    # exit
-    parser = argparse.ArgumentParser()
-    parser.add_argument("request_total", help="request_total")
-    parser.add_argument("num_threads", help="num_threads")
-    args = parser.parse_args()
+def safe_create_and_run_task(task: TaskTable, thread_num: int):
+    try:
+        create_and_run_task(task, thread_num)
+    except Exception as e:
+        error_task(task, {e})
+        print(f"Task Failed: {e}")
+        traceback.print_exc()
 
-    request_total = int(args.request_total)
-    num_threads = int(args.num_threads)
 
-    log_file = f"reports/{source_location}_{target_location}_{deployment_type}_{request_total}_{num_threads}_latency.jsonl"
-    report_file = f"reports/{source_location}_{target_location}_{deployment_type}_{request_total}_{num_threads}_latency.report.txt"
+def task_executor(task: TaskTable):
 
-    if os.path.exists(log_file):
-        os.remove(log_file)
-
-    if os.path.exists(report_file):
-        os.remove(report_file)
-
-    if not os.path.exists(log_file):
+    if task.feishu_token:
         feishu_text(
-            f"start to run {source_location} {target_location} {request_total} {num_threads}"
+            f"start to run {task.source_location} {task.target_location} {task.request_per_thread} {task.threads} {task.deployment_type} {task.model_id}",
+            task.feishu_token
         )
-        with ThreadPoolExecutor(max_workers=num_threads) as executor:
-            for _ in range(request_total):
-                executor.submit(create_and_run_task, log_file)
 
+    with ThreadPoolExecutor(max_workers=task.threads) as executor:
+        futures = [
+            executor.submit(safe_create_and_run_task, task, 1)
+            for _ in range(task.request_per_thread)
+        ]
+
+    for future in futures:
+        try:
+            future.result()
+            succeed_task(task)
+        except Exception as e:
+            print(f"Threads Failed: {e}")
+
+    return
     # get min latency, max latency, p50, p90, p99
-    with open(log_file, "r") as f:
+    with open(task.log_file, "r") as f:
         data = [json.loads(line) for line in f]
 
         # count times
@@ -68,29 +58,33 @@ if __name__ == "__main__":
             item["first_token_latency_ms"] for item in data]
         last_token_latency_ms = [
             item["last_token_latency_ms"] for item in data]
-        response_latency_ms = [item["response_latency_ms"] for item in data]
+        response_latency_ms = [item["response_latency_ms"]
+                               for item in data]
         cost_req_time_ms = [item['cost_req_time'] for item in data]
         input_token_count = [item['input_token_count'] for item in data]
         output_token_count = [item['output_token_count'] for item in data]
 
         tokens_every_second_data = []
         for item in data:
-            tokens_every_second_data.extend(item["tokens_every_second_data"])
+            tokens_every_second_data.extend(
+                item["tokens_every_second_data"])
 
         characters_every_second_data = []
         for item in data:
             characters_every_second_data.extend(
                 item["characters_every_second_data"])
 
-        with open(report_file, "a") as f:
-            f.write(f"\n=================== base information ===================")
-            f.write(f"\nsource_location: {source_location}")
-            f.write(f"\ntarget_location: {target_location}")
-            f.write(f"\nrequest_total: {request_total}")
-            f.write(f"\nnum_threads: {num_threads}")
+        with open(task.report_file, "a") as f:
+            f.write(
+                f"\n=================== base information ===================")
+            f.write(f"\nsource_location: {task.source_location}")
+            f.write(f"\ntarget_location: {task.target_location}")
+            f.write(f"\request_per_thread: {task.request_per_thread}")
+            f.write(f"\nnum_threads: {task.threads}")
             f.write(f"\nmodel id: {os.getenv('AZURE_MODEL_ID')}")
             f.write(f"\nDeployment type: Global Standard")
-            f.write(f"\n2M tokens per minute quota available for your deployment")
+            f.write(
+                f"\n2M tokens per minute quota available for your deployment")
             f.write(f"\n===================")
             f.write(
                 f"\nMin first token latency: {int(min(first_token_latency_ms))}")
@@ -104,8 +98,10 @@ if __name__ == "__main__":
                 f"\nMax last token latency from first token: {int(max(last_token_latency_ms))}"
             )
             f.write(f"\n===================")
-            f.write(f"\nMin response latency: {int(min(response_latency_ms))}")
-            f.write(f"\nMax response latency: {int(max(response_latency_ms))}")
+            f.write(
+                f"\nMin response latency: {int(min(response_latency_ms))}")
+            f.write(
+                f"\nMax response latency: {int(max(response_latency_ms))}")
             f.write(f"\n===================")
             f.write(
                 f"\nMin tokens every second: {int(min(tokens_every_second_data))}")
@@ -205,4 +201,4 @@ if __name__ == "__main__":
             f.write(f"\nInput tokens: {int(np.sum(input_token_count))}")
             f.write(f"\nOutput tokens: {int(np.sum(output_token_count))}")
 
-        feishu_text(report_file)
+        feishu_text(task.report_file)

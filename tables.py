@@ -29,6 +29,7 @@ class TaskTable(Base):
     deployment_type = Column(String)
     feishu_token = Column(String)
     request_per_thread = Column(Integer)
+    timeout = Column(Integer)
     threads = Column(Integer)
     status = Column(Integer)
     error_message = Column(String)

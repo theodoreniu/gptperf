@@ -48,8 +48,10 @@ def create_task():
             label="threads", step=1, min_value=1, max_value=20, help="!!"
         )
         task.feishu_token = st.text_input(label="feishu_token", help="!!")
-        task.model_type = st.selectbox(
-            label='💡 model_type', options=[aoai, ds])
+        task.timeout = st.number_input(
+            label="timeout", step=1,
+            min_value=10000, max_value=100000, help="!!"
+        )
     with col2:
         task.request_per_thread = st.number_input(
             label="request_per_thread", step=1,
@@ -62,6 +64,19 @@ def create_task():
             value=task.threads * task.request_per_thread
         )
         task.model_id = st.text_input(label="model_id", help="!!")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        task.system_prompt = st.text_area(
+            label="system_prompt", help="!!", height=200)
+    with col2:
+        task.user_prompt = st.text_area(
+            label="user_prompt", help="!!", height=200)
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        task.model_type = st.selectbox(
+            label='💡 model_type', options=[aoai, ds])
 
     if task.model_type == aoai:
         col1, col2 = st.columns(2)
@@ -84,14 +99,6 @@ def create_task():
                 'Yes', 'No'])
             if enable_think == 'No':
                 task.enable_think = False
-
-    col1, col2 = st.columns(2)
-    with col1:
-        task.system_prompt = st.text_area(
-            label="system_prompt", help="!!", height=200)
-    with col2:
-        task.user_prompt = st.text_area(
-            label="user_prompt", help="!!", height=200)
 
     if st.button(label="➕ Create"):
         with st.spinner():
@@ -222,7 +229,19 @@ def task_page(task_id: int):
                 requests = load_all_requests(task)
                 list = []
                 for request in requests:
-                    list.append(request.__dict__)
+                    list.append({
+                        "request_id": request.id,
+                        "thread_num": request.thread_num,
+                        "created_at": request.created_at,
+                        "response": request.response,
+                        "success": request.success,
+                        "chunks_count": request.chunks_count,
+                        "completed_at": request.completed_at,
+                        "cost_req_time_ms": request.cost_req_time_ms,
+                        "first_token_latency_ms": request.first_token_latency_ms,
+                        "output_token_count": request.output_token_count,
+                        "response_latency_ms": request.response_latency_ms,
+                    })
 
                 if len(requests) > 0:
                     st.markdown("## Requests")

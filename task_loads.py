@@ -131,6 +131,8 @@ def load_all_requests(task: TaskTable) -> List[TaskRequestTable]:
         TaskRequestTable.task_id == task.id
     ).order_by(
         TaskRequestTable.created_at.desc()
+    ).limit(
+        1000
     ).all()
 
     session.close()

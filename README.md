@@ -1,31 +1,17 @@
-# GPT Performance Test
+# LLM Perf
 
-## 1. Install
+## 1. Config your env
+
+Copy and set up the environment variables from `.env.example`.
 
 ```bash
-pip install -r requirements.txt
+vi .env
 ```
 
-## 2. Set up environment variables
+## 2. Launch your App
 
 Copy and set up the environment variables.
 
 ```bash
-cp .env.example .env
+./start.sh
 ```
-
-## 3. Run
-
-```bash
-python py.py {request_per_thread} {num_threads}
-```
-
-If you request 1000000 requests and 10 threads, you can run the following command:  
-
-```bash
-python py.py 1000000 10
-```
-
-## 4. Check Reports
-
-You can find the reports in the `reports` directory.

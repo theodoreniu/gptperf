@@ -87,6 +87,7 @@ class TaskRuntime:
                 task_chunk.last_token_latency_ms = so_far_ms(
                     self.last_token_time
                 )
+                self.last_token_time = time_now()
 
             task_request.chunks_count += 1
 
@@ -108,8 +109,6 @@ class TaskRuntime:
             )
 
             task_chunk.chunk_index = task_request.chunks_count
-
-            self.last_token_time = time_now()
 
             chunk_enqueue(self.redis, task_chunk)
 
@@ -135,6 +134,7 @@ class TaskRuntime:
 
         for chunk in stream:
             task_chunk = TaskRequestChunkTable(
+                id=data_id(),
                 task_id=self.task.id,
                 thread_num=self.thread_num,
                 request_id=task_request.id,
@@ -152,6 +152,7 @@ class TaskRuntime:
                 task_chunk.last_token_latency_ms = so_far_ms(
                     self.last_token_time
                 )
+                self.last_token_time = time_now()
 
             task_chunk.chunk_content = chunk['message']['content']
 
@@ -172,8 +173,6 @@ class TaskRuntime:
             )
 
             task_chunk.chunk_index = task_request.chunks_count
-
-            self.last_token_time = time_now()
 
             chunk_enqueue(self.redis, task_chunk)
 

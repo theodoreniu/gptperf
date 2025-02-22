@@ -182,7 +182,8 @@ def task_form(task: TaskTable, session, edit: bool = False):
             label = "➕ Create"
             if edit:
                 label = "🔄 Update"
-            if st.button(label=label):
+            create_update_btn = st.button(label=label)
+            if create_update_btn:
                 with st.spinner():
                     if not task.name:
                         st.error("Name is required.")
@@ -214,6 +215,7 @@ def task_form(task: TaskTable, session, edit: bool = False):
                         session.commit()
 
                     st.success("Succeed")
+
     with col2:
         if task.status != 1 and task.status != 2 and is_admin():
             delete_btn = st.button(
@@ -223,6 +225,7 @@ def task_form(task: TaskTable, session, edit: bool = False):
                 session.delete(task)
                 session.commit()
                 st.success("Deleted")
+
     with col3:
         if task.status != 1 and task.status != 2:
             run_btn = st.button(

@@ -230,7 +230,7 @@ def render_chunks(session, request: TaskRequestChunkTable,  title):
 
 if __name__ == "__main__":
 
-    page_title = "LLM Testing Platform"
+    page_title = "LLM Perf"
     st.set_page_config(
         page_title=page_title,
         page_icon="avatars/favicon.ico",

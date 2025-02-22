@@ -12,8 +12,8 @@ if __name__ == "__main__":
         for task in tasks:
             try:
                 run_task(task)
-                truncate_table('tasks_requests')
-                truncate_table('tasks_requests_chunks')
+                # truncate_table('tasks_requests')
+                # truncate_table('tasks_requests_chunks')
                 task_executor(task)
             except Exception as e:
                 error_task(task, {e})

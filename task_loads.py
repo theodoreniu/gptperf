@@ -130,7 +130,7 @@ def load_all_requests(task: TaskTable) -> List[TaskRequestTable]:
     ).filter(
         TaskRequestTable.task_id == task.id
     ).order_by(
-        TaskRequestTable.created_at.desc()
+        TaskRequestTable.start_req_time.desc()
     ).limit(
         1000
     ).all()

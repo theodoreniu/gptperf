@@ -32,13 +32,11 @@ def task_report(task: TaskTable):
 
         "characters / second": report_number(f"SELECT ROUND((created_at / 1000)) AS timestamp_seconds, sum(characters_len) AS characters_count FROM tasks_requests_chunks WHERE task_id = {task.id} and characters_len>0 GROUP BY timestamp_seconds ORDER BY timestamp_seconds;", 1),
 
-        "output_token_count": report_number(f"SELECT output_token_count FROM tasks_requests WHERE task_id = {task.id};", 0),
-
         "first_token_latency_ms": report_number(f"SELECT first_token_latency_ms FROM tasks_requests WHERE task_id = {task.id};", 0),
 
-        "response_latency_ms": report_number(f"SELECT response_latency_ms FROM tasks_requests WHERE task_id = {task.id};", 0),
-
-        "cost_req_time_ms": report_number(f"SELECT cost_req_time_ms FROM tasks_requests WHERE task_id = {task.id};", 0),
+        "request_latency_ms": report_number(f"SELECT request_latency_ms FROM tasks_requests WHERE task_id = {task.id};", 0),
 
         "chunks_count": report_number(f"SELECT chunks_count FROM tasks_requests WHERE task_id = {task.id};", 0),
+
+        "output_token_count": report_number(f"SELECT output_token_count FROM tasks_requests WHERE task_id = {task.id};", 0),
     }

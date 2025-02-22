@@ -196,6 +196,7 @@ def task_page(task_id: int):
         st.write(f"progress_percentage: `{task.progress_percentage}%`")
         st.write(f"model_type: `{task.model_type}`")
         st.write(f"request_succeed: `{task.request_succeed}`")
+        st.write(f"timeout: `{task.timeout}`")
     with col2:
         st.write(f"created_at: `{task.created_at}`")
         st.write(f"model_id: `{task.model_id}`")
@@ -230,22 +231,19 @@ def task_page(task_id: int):
                 list = []
                 for request in requests:
                     list.append({
-                        "request_id": request.id,
                         "thread_num": request.thread_num,
-                        "created_at": request.created_at,
+                        "start_req_time": request.start_req_time,
                         "response": request.response,
                         "success": request.success,
                         "chunks_count": request.chunks_count,
-                        "completed_at": request.completed_at,
-                        "cost_req_time_ms": request.cost_req_time_ms,
-                        "first_token_latency_ms": request.first_token_latency_ms,
                         "output_token_count": request.output_token_count,
-                        "response_latency_ms": request.response_latency_ms,
+                        "first_token_latency_ms": request.first_token_latency_ms,
+                        "request_latency_ms": request.request_latency_ms,
                     })
 
                 if len(requests) > 0:
                     st.markdown("## Requests")
-                    st.dataframe(list)
+                    st.dataframe(list, use_container_width=True)
             except Exception as e:
                 print(e)
 

@@ -77,6 +77,10 @@ class TaskRuntime:
             for chunk in response:
                 if len(chunk.choices) > 0:
 
+                    if not task_request.first_token_latency_ms:
+                        task_request.first_token_latency_ms = so_far_ms(
+                            task_request.start_req_time)
+
                     task_chunk = TaskRequestChunkTable(
                         task_id=self.task.id,
                         thread_num=self.thread_num,
@@ -93,12 +97,7 @@ class TaskRuntime:
                     else:
                         print("no content")
 
-                    # if delta.content:
                     task_request.chunks_count += 1
-
-                    if not task_request.first_token_latency_ms:
-                        task_request.first_token_latency_ms = so_far_ms(
-                            task_request.created_at)
 
                     if delta.role:
                         print(delta.role + ": ", end="", flush=True)
@@ -130,16 +129,12 @@ class TaskRuntime:
                     session.commit()
 
             task_request.end_req_time = time_now()
-            task_request.cost_req_time_ms = (
+            task_request.request_latency_ms = (
                 task_request.end_req_time - task_request.start_req_time)
 
             if task_request.first_token_latency_ms:
                 task_request.last_token_latency_ms = so_far_ms(
                     self.last_token_time
-                )
-
-                task_request.response_latency_ms = so_far_ms(
-                    task_request.created_at
                 )
 
             task_request.success = 1

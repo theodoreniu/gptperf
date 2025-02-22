@@ -5,7 +5,7 @@
 Copy and set up the environment variables from `.env.example`.
 
 ```bash
-vi .env
+cp .env.example .env
 ```
 
 ## 2. Launch your App

@@ -9,3 +9,4 @@ streamlit==1.42.1
 streamlit-ace==0.1.1
 streamlit-authenticator==0.4.1
 sqlalchemy==2.0.38
+ollama==0.4.7

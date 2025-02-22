@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-from tables import TaskRequestTable, TaskTable
+from tables import TaskRequestChunkTable, TaskRequestTable, TaskTable
 
 load_dotenv()
 
@@ -107,6 +107,13 @@ def delete_task(task: TaskTable):
     session = Session()
     session.delete(task)
     session.commit()
+
+
+def delete_task_data(task: TaskTable):
+    sql_commit(
+        f'delete from {TaskRequestTable.__tablename__} where task_id = {task.id}')
+    sql_commit(
+        f'delete from {TaskRequestChunkTable.__tablename__} where task_id = {task.id}')
 
 
 def add_task(task: TaskTable) -> TaskTable:

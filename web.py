@@ -1,5 +1,5 @@
 
-from config import aoai, ds
+from config import aoai, ds, ds_models, aoai_models
 import logging
 import sys
 import streamlit as st
@@ -12,7 +12,7 @@ from typing import List
 from helper import is_admin, time_now
 from report import task_report
 from tables import TaskTable
-from task_loads import add_task, delete_task, find_task, load_all_requests, load_all_tasks, queue_task
+from task_loads import add_task, delete_task, delete_task_data, find_task, load_all_requests, load_all_tasks, queue_task
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -47,10 +47,6 @@ def create_task():
             label="threads", step=1, min_value=1, max_value=20, help="!!"
         )
         task.feishu_token = st.text_input(label="feishu_token", help="!!")
-        task.timeout = st.number_input(
-            label="timeout", step=1,
-            min_value=10000, max_value=100000, help="!!"
-        )
     with col2:
         task.request_per_thread = st.number_input(
             label="request_per_thread", step=1,
@@ -62,7 +58,10 @@ def create_task():
             label="request_total", disabled=True,
             value=task.threads * task.request_per_thread
         )
-        task.model_id = st.text_input(label="model_id", help="!!")
+        task.timeout = st.number_input(
+            label="timeout", step=1,
+            min_value=10000, max_value=100000, help="!!"
+        )
 
     col1, col2 = st.columns(2)
     with col1:
@@ -78,7 +77,7 @@ def create_task():
             label='💡 model_type', options=[aoai, ds])
 
     if task.model_type == aoai:
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         with col1:
             task.azure_endpoint = st.text_input(
                 label="azure_endpoint", help="!!")
@@ -88,9 +87,11 @@ def create_task():
             task.api_version = st.text_input(label="api_version", help="!!")
             task.deployment_type = st.selectbox(label='deployment_type', options=[
                 'global standed', 'ds'])
+        with col3:
+            task.model_id = st.selectbox(label='model_id', options=aoai_models)
 
     if task.model_type == ds:
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         with col1:
             task.azure_endpoint = st.text_input(label="endpoint", help="!!")
         with col2:
@@ -98,6 +99,8 @@ def create_task():
                 'Yes', 'No'])
             if enable_think == 'No':
                 task.enable_think = False
+        with col3:
+            task.model_id = st.selectbox(label='model_id', options=ds_models)
 
     if st.button(label="➕ Create"):
         with st.spinner():
@@ -178,6 +181,7 @@ def task_page(task_id: int):
             delete_btn = st.button(
                 label="🗑️ Delete", key=f"delete_task_{task.id}")
             if delete_btn:
+                delete_task_data(task)
                 delete_task(task)
                 st.success("Deleted")
                 st.session_state.tasks = load_all_tasks()
@@ -191,9 +195,17 @@ def task_page(task_id: int):
 
     col1, col2, col3 = st.columns(3)
     with col1:
+        enable_think = ''
+        if task.model_type == ds:
+            if task.enable_think:
+                enable_think = '<span style="color:red;">Think</span>'
+            else:
+                enable_think = '<span style="color:red;">No Think</span>'
+
         st.write(f"desc: `{task.desc}`")
         st.write(f"progress_percentage: `{task.progress_percentage}%`")
-        st.write(f"model_type: `{task.model_type}`")
+        st.markdown(
+            f"model_type: `{task.model_type}` {enable_think}", unsafe_allow_html=True)
         st.write(f"request_succeed: `{task.request_succeed}`")
         st.write(f"timeout: `{task.timeout}`")
     with col2:
@@ -217,24 +229,30 @@ def task_page(task_id: int):
 
         with st.spinner(text="Loading Report..."):
             try:
+                start_time = time_now()
                 data = task_report(task)
+                end_time = time_now()
+                cost_time = round(end_time-start_time, 2)
                 df = pd.DataFrame.from_dict(data, orient='index')
                 st.markdown("## Report")
+                st.text(f"Query {cost_time} ms")
                 st.table(df)
             except Exception as e:
                 st.error(e)
 
         with st.spinner(text="Loading Failed Requests..."):
-            requests = load_all_requests(task, 0)
-            render_requests(requests, 'Failed Requests')
+            render_requests(task, 0, 'Failed Requests')
 
         with st.spinner(text="Loading Succeed Requests..."):
-            requests = load_all_requests(task, 1)
-            render_requests(requests, 'Succeed Requests')
+            render_requests(task, 1, 'Succeed Requests')
 
 
-def render_requests(requests, title):
+def render_requests(task, status, title):
     try:
+        start_time = time_now()
+        requests = load_all_requests(task, status)
+        end_time = time_now()
+        cost_time = round(end_time-start_time, 2)
         list = []
         for request in requests:
             list.append({
@@ -251,6 +269,7 @@ def render_requests(requests, title):
         count = len(requests)
         if count > 0:
             st.markdown(f"## {title} ({count})")
+            st.text(f"Query {cost_time} ms")
             st.dataframe(list, use_container_width=True)
     except Exception as e:
         st.error(e)

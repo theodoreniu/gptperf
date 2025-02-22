@@ -1,11 +1,24 @@
 
-from config import aoai, ds, ds_models, aoai_models, deployment_types
+from config import aoai, ds, ds_models, aoai_models, deployment_types, model_types
 import streamlit as st
 from dotenv import load_dotenv
 from helper import is_admin
 from tables import TaskTable
-from task_loads import delete_task_data
+from task_loads import delete_task_data, queue_task
 
+
+import logging
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -18,26 +31,16 @@ def task_form(task: TaskTable, session, edit: bool = False):
             label="Name",
             value=task.name
         )
-        task.content_length = st.number_input(
-            label="Content Length",
-            value=task.content_length,
-            step=1,
-            min_value=1,
-            max_value=204800
-        )
     with col2:
         task.desc = st.text_input(
             label="Description",
             value=task.desc
         )
-        task.temperature = st.text_input(
-            label="Temperature",
-            value=task.temperature
-        )
     with col3:
         task.api_key = st.text_input(
             label="api_key",
-            value=task.api_key
+            value=task.api_key,
+            type="password"
         )
     with col4:
         task.timeout = st.number_input(
@@ -49,7 +52,7 @@ def task_form(task: TaskTable, session, edit: bool = False):
             help="!!"
         )
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
     with col1:
         task.threads = st.number_input(
             label="threads",
@@ -75,6 +78,19 @@ def task_form(task: TaskTable, session, edit: bool = False):
             value=task.threads * task.request_per_thread
         )
     with col4:
+        task.content_length = st.number_input(
+            label="Content Length",
+            value=task.content_length,
+            step=1,
+            min_value=1,
+            max_value=204800
+        )
+    with col5:
+        task.temperature = st.text_input(
+            label="Temperature",
+            value=task.temperature
+        )
+    with col6:
         task.feishu_token = st.text_input(
             label="feishu_token",
             value=task.feishu_token,
@@ -101,7 +117,8 @@ def task_form(task: TaskTable, session, edit: bool = False):
     with col1:
         task.model_type = st.selectbox(
             label='💡 model_type',
-            options=[aoai, ds]
+            options=model_types,
+            index=model_types.index(task.model_type) if task.model_type else 0
         )
         if task.model_type == aoai:
             task.api_version = st.text_input(
@@ -118,7 +135,9 @@ def task_form(task: TaskTable, session, edit: bool = False):
             )
             task.deployment_type = st.selectbox(
                 label='deployment_type',
-                options=deployment_types
+                options=deployment_types,
+                index=deployment_types.index(
+                    task.deployment_type) if task.deployment_type else 0
             )
         if task.model_type == ds:
             task.azure_endpoint = st.text_input(
@@ -130,12 +149,17 @@ def task_form(task: TaskTable, session, edit: bool = False):
         if task.model_type == aoai:
             task.model_id = st.selectbox(
                 label='model_id',
-                options=aoai_models
+                options=aoai_models,
+                index=aoai_models.index(
+                    task.model_id) if task.model_id and task.model_id in aoai_models else 0
             )
+
         if task.model_type == ds:
             task.model_id = st.selectbox(
                 label='model_id',
-                options=ds_models
+                options=ds_models,
+                index=ds_models.index(
+                    task.model_id) if task.model_id and task.model_id in ds_models else 0
             )
     with col4:
         if task.model_type == aoai:
@@ -145,50 +169,51 @@ def task_form(task: TaskTable, session, edit: bool = False):
                 help="!!"
             )
         if task.model_type == ds:
-            enable_think = st.selectbox(
+            task.enable_think = st.selectbox(
                 label="enable_think",
-                options=['Yes', 'No']
+                options=[True, False],
+                index=[True, False].index(
+                    task.enable_think) if task.enable_think else 1
             )
-            if enable_think == 'No':
-                task.enable_think = False
 
     col1, col2, col3 = st.columns([1, 1, 10])
     with col1:
-        label = "➕ Create"
-        if edit:
-            label = "🔄 Update"
-        if st.button(label=label):
-            with st.spinner():
-                if not task.name:
-                    st.error("Name is required.")
-                    return
-                if not task.desc:
-                    st.error("Description is required.")
-                    return
-                if not task.name:
-                    st.error("Name is required.")
-                    return
-                if not task.model_id:
-                    st.error("Model ID is required.")
-                    return
-                if not task.azure_endpoint:
-                    st.error("endpoint is required.")
-                    return
-
-                if task.model_type == aoai:
-                    if not task.api_version:
-                        st.error("api_version is required.")
+        if task.status != 1 and task.status != 2:
+            label = "➕ Create"
+            if edit:
+                label = "🔄 Update"
+            if st.button(label=label):
+                with st.spinner():
+                    if not task.name:
+                        st.error("Name is required.")
                         return
-                    if not task.deployment_name:
-                        st.error("deployment_name is required.")
+                    if not task.desc:
+                        st.error("Description is required.")
                         return
-                if edit:
-                    session.commit()
-                else:
-                    session.add(task)
-                    session.commit()
+                    if not task.name:
+                        st.error("Name is required.")
+                        return
+                    if not task.model_id:
+                        st.error("Model ID is required.")
+                        return
+                    if not task.azure_endpoint:
+                        st.error("endpoint is required.")
+                        return
 
-                st.success("Succeed")
+                    if task.model_type == aoai:
+                        if not task.api_version:
+                            st.error("api_version is required.")
+                            return
+                        if not task.deployment_name:
+                            st.error("deployment_name is required.")
+                            return
+                    if edit:
+                        session.commit()
+                    else:
+                        session.add(task)
+                        session.commit()
+
+                    st.success("Succeed")
     with col2:
         if task.status != 1 and task.status != 2 and is_admin():
             delete_btn = st.button(
@@ -201,12 +226,11 @@ def task_form(task: TaskTable, session, edit: bool = False):
     with col3:
         if task.status != 1 and task.status != 2:
             run_btn = st.button(
-                label="▶ Run", key=f"run_task_{task.id}")
+                label="▶ Run",
+                key=f"run_task_{task.id}"
+            )
             if run_btn:
-                task.status = 1
-                task.request_succeed = 0
-                task.request_failed = 0
-                session.commit()
+                queue_task(session, task)
                 st.success("Pendding")
 
     st.markdown("----------")

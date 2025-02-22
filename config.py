@@ -20,6 +20,10 @@ ds_models = [
     'deepseek-coder:latest'
 ]
 
+model_types = [
+    aoai, ds
+]
+
 deployment_types = [
     'Global Standard',
     'Data Zone Standard',

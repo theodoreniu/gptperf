@@ -3,16 +3,29 @@
 from typing import List
 
 
-from sqlalchemy import text
+from sqlalchemy import text, update
 
 from tables import TaskRequestChunkTable, TaskRequestTable, TaskTable
 from dotenv import load_dotenv
+
+
+import logging
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
 load_dotenv()
 
 
 def sql_query(session, sql: str):
-    print(sql)
-
     session.execute(text(sql))
 
     return session.execute(text(sql))
@@ -23,29 +36,28 @@ def sql_commit(session, sql: str):
     session.commit()
 
 
+def queue_task(session, task: TaskTable):
+    task.status = 1
+    session.commit()
+
+
+def run_task(session, task: TaskTable):
+    task.status = 2
+    task.error_message = ""
+    task.request_failed = 0
+    task.request_succeed = 0
+    session.commit()
+
+
 def error_task(session, task: TaskTable, message: str):
-    session.query(
-        TaskTable
-    ).filter(
-        TaskTable.id == task.id
-    ).update(
-        {
-            TaskTable.status: 3,
-            TaskTable.error_message: message,
-        }
-    )
+    task.status = 3
+    task.error_message = message
     session.commit()
 
 
 def succeed_task(session, task: TaskTable):
-    session.query(TaskTable).filter(
-        TaskTable.id == task.id
-    ).update(
-        {
-            TaskTable.status: 4,
-            TaskTable.error_message: "",
-        }
-    )
+    task.status = 4
+    task.error_message = ""
     session.commit()
 
 
@@ -57,13 +69,11 @@ def delete_task_data(session, task: TaskTable):
 
 
 def load_all_tasks(session) -> List[TaskTable]:
-
     results = session.query(
         TaskTable
     ).order_by(
         TaskTable.created_at.desc()
     ).all()
-    session.close()
 
     return results
 
@@ -103,8 +113,10 @@ def load_queue_tasks(session) -> List[TaskTable]:
     ).filter(
         TaskTable.status == 1
     ).order_by(
-        TaskTable.created_at.desc()
-    ).limit(1).all()
+        TaskTable.created_at.asc()
+    ).limit(
+        1
+    ).all()
 
     return results
 

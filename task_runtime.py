@@ -1,13 +1,27 @@
 import uuid
 from dotenv import load_dotenv
 import tiktoken
-from sqlalchemy import update
-from helper import get_mysql_session, so_far_ms, time_now
+from helper import data_id, redis_client, so_far_ms, time_now
+from serialize import chunk_enqueue, request_enqueue
 from tables import TaskRequestChunkTable, TaskRequestTable
 from task_loads import TaskTable
 import traceback
 from config import aoai
 from ollama import Client
+
+
+import logging
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -28,6 +42,7 @@ class TaskRuntime:
         self.encoding = encoding
         self.client = client
         self.request_index = request_index
+        self.redis = redis_client()
 
     def num_tokens_from_messages(self, task: TaskTable):
         messages = task.query
@@ -40,7 +55,7 @@ class TaskRuntime:
         num_tokens += 3
         return num_tokens
 
-    def deal_aoai(self, task_request: TaskRequestChunkTable, session) -> TaskRequestChunkTable:
+    def deal_aoai(self, task_request: TaskRequestChunkTable) -> TaskRequestChunkTable:
         response = self.client.chat.completions.create(
             messages=self.task.query,
             model=self.task.model_id,
@@ -54,6 +69,7 @@ class TaskRuntime:
                 continue
 
             task_chunk = TaskRequestChunkTable(
+                id=data_id(),
                 task_id=self.task.id,
                 thread_num=self.thread_num,
                 request_id=task_request.id,
@@ -95,11 +111,11 @@ class TaskRuntime:
 
             self.last_token_time = time_now()
 
-            session.add(task_chunk)
-            session.commit()
+            chunk_enqueue(self.redis, task_chunk)
+
         return task_request
 
-    def deal_ds(self, task_request: TaskRequestChunkTable, session) -> TaskRequestChunkTable:
+    def deal_ds(self, task_request: TaskRequestChunkTable) -> TaskRequestChunkTable:
 
         client = Client(
             host=self.task.azure_endpoint,
@@ -159,16 +175,14 @@ class TaskRuntime:
 
             self.last_token_time = time_now()
 
-            session.add(task_chunk)
-            session.commit()
+            chunk_enqueue(self.redis, task_chunk)
+
         return task_request
 
     def latency(self):
 
-        session = get_mysql_session()
-
         task_request = TaskRequestTable(
-            id=uuid.uuid4(),
+            id=data_id(),
             task_id=self.task.id,
             thread_num=self.thread_num,
             response="",
@@ -185,9 +199,9 @@ class TaskRuntime:
             task_request.start_req_time = time_now()
 
             if self.task.model_type == aoai:
-                task_request = self.deal_aoai(task_request, session)
+                task_request = self.deal_aoai(task_request)
             else:
-                task_request = self.deal_ds(task_request, session)
+                task_request = self.deal_ds(task_request)
 
             task_request.end_req_time = time_now()
             task_request.request_latency_ms = (
@@ -199,19 +213,12 @@ class TaskRuntime:
                 )
 
             task_request.success = 1
-            session.execute(
-                update(TaskTable).where(TaskTable.id == self.task.id).values(
-                    request_succeed=TaskTable.request_succeed + 1)
-            )
+
         except Exception as e:
             task_request.success = 0
             task_request.response = f"{e}"
-            session.execute(
-                update(TaskTable).where(TaskTable.id == self.task.id).values(
-                    request_failed=TaskTable.request_failed + 1)
-            )
-            traceback.print_exc()
+            logger.error(f'Error: {e}', exc_info=True)
 
         task_request.completed_at = time_now()
-        session.add(task_request)
-        session.commit()
+
+        request_enqueue(self.redis, task_request)

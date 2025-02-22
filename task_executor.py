@@ -8,6 +8,20 @@ import tiktoken
 from openai import AzureOpenAI, OpenAI
 
 
+import logging
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
+
 def safe_create_and_run_task(task: TaskTable, thread_num: int,  encoding: tiktoken.Encoding, client, request_index: int):
     task_runtime = TaskRuntime(
         task=task,
@@ -61,4 +75,4 @@ def task_executor(session, task: TaskTable):
             future.result()
             succeed_task(session, task)
         except Exception as e:
-            print(f"Threads Failed: {e}")
+            logger.error(f'Threads Error: {e}', exc_info=True)

@@ -8,6 +8,19 @@ from sqlalchemy.ext.declarative import declarative_base
 from helper import time_now
 
 
+import logging
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
 Base = declarative_base()
 
 
@@ -130,7 +143,7 @@ class TaskRequestTable(Base):
 
 class TaskRequestChunkTable(Base):
     __tablename__ = 'tasks_requests_chunks'
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(String, primary_key=True)
     task_id = Column(Integer)
     thread_num = Column(Integer)
     request_id = Column(String)

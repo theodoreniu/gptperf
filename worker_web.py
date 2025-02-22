@@ -14,6 +14,20 @@ from task_loads import find_request, load_all_chunks, load_all_requests, load_al
 import pandas as pd
 
 
+import logging
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
+
 load_dotenv()
 
 
@@ -76,7 +90,43 @@ def request_page(session, request_id: str):
         st.error("request not found")
         return
 
-    st.write(request)
+    st.markdown("------")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown(f"id: `{request.id}`")
+    with col2:
+        st.markdown(f"task_id: `{request.task_id}`")
+    with col3:
+        st.markdown(f"completed_at: `{request.completed_at}`")
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown(f"input_token_count: `{request.input_token_count}`")
+    with col2:
+        st.markdown(f"output_token_count: `{request.output_token_count}`")
+    with col3:
+        st.markdown(f"chunks_count: `{request.chunks_count}`")
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown(
+            f"first_token_latency_ms: `{request.first_token_latency_ms}`")
+    with col2:
+        st.markdown(
+            f"last_token_latency_ms: `{request.last_token_latency_ms}`")
+    with col3:
+        st.markdown(f"request_latency_ms: `{request.request_latency_ms}`")
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown(f"thread_num: `{request.thread_num}`")
+    with col2:
+        st.markdown(f"request_index: `{request.request_index}`")
+    with col3:
+        st.markdown(f"success: `{request.success}`")
+
+    st.text_area(label="response: ", value=request.response, height=250)
+
     render_chunks(session, request, 'Chunks')
 
 
@@ -93,7 +143,7 @@ def task_page(session, task_id: int):
     st.markdown(
         f"## {task.status_icon} {task.name} `{task.status_text}` `{task.progress_percentage}%`")
 
-    if task.status > 1 and task.progress_percentage > 0:
+    if task.status > 1:
         st.progress(task.progress_percentage)
 
     if not task:
@@ -105,7 +155,7 @@ def task_page(session, task_id: int):
     if task.error_message:
         st.error(task.error_message)
 
-    if task.status > 1 and task.progress_percentage > 0:
+    if task.status > 1:
 
         with st.spinner(text="Loading Report..."):
             try:

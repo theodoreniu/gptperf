@@ -3,6 +3,19 @@ from task_loads import TaskTable, sql_query
 import numpy as np
 import streamlit as st
 
+import logging
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
 
 def report_number(session, sql_string: str, index: int):
     try:

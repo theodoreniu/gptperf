@@ -1,5 +1,5 @@
 
-from config import aoai, ds, ds_models, aoai_models
+from config import aoai, ds, ds_models, aoai_models, deployment_types
 import logging
 import sys
 import streamlit as st
@@ -11,8 +11,8 @@ import streamlit_authenticator as stauth
 from typing import List
 from helper import is_admin, time_now
 from report import task_report
-from tables import TaskTable
-from task_loads import add_task, delete_task, delete_task_data, find_task, load_all_requests, load_all_tasks, queue_task
+from tables import TaskRequestChunkTable, TaskTable
+from task_loads import add_task, delete_task, delete_task_data, find_request, find_task, load_all_chunks, load_all_requests, load_all_tasks, queue_task
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -33,35 +33,45 @@ def create_task():
         status=1,
         enable_think=True,
         created_at=time_now(),
+        content_length=2048,
+        temperature=0.8,
+        timeout=100000,
     )
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
-        task.name = st.text_input(label="Name", help="!!")
+        task.name = st.text_input(label="Name")
+        task.content_length = st.number_input(
+            label="Content Length", value=2048, step=1, min_value=1, max_value=204800)
     with col2:
-        task.desc = st.text_input(label="Description", help="!!")
+        task.desc = st.text_input(label="Description")
+        task.temperature = st.text_input(
+            label="Temperature", value=0.8)
+    with col3:
+        task.api_key = st.text_input(label="api_key", help="!!")
+    with col4:
+        task.timeout = st.number_input(
+            label="timeout", step=1,
+            min_value=100000, max_value=1000000, help="!!"
+        )
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         task.threads = st.number_input(
             label="threads", step=1, min_value=1, max_value=20, help="!!"
         )
-        task.feishu_token = st.text_input(label="feishu_token", help="!!")
     with col2:
         task.request_per_thread = st.number_input(
             label="request_per_thread", step=1,
             min_value=1, max_value=1000, help="!!"
         )
-        task.api_key = st.text_input(label="api_key", help="!!")
     with col3:
         st.number_input(
             label="request_total", disabled=True,
             value=task.threads * task.request_per_thread
         )
-        task.timeout = st.number_input(
-            label="timeout", step=1,
-            min_value=10000, max_value=100000, help="!!"
-        )
+    with col4:
+        task.feishu_token = st.text_input(label="feishu_token", help="!!")
 
     col1, col2 = st.columns(2)
     with col1:
@@ -71,36 +81,34 @@ def create_task():
         task.user_prompt = st.text_area(
             label="user_prompt", help="!!", height=200)
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         task.model_type = st.selectbox(
             label='💡 model_type', options=[aoai, ds])
-
-    if task.model_type == aoai:
-        col1, col2, col3 = st.columns(3)
-        with col1:
+        if task.model_type == aoai:
+            task.api_version = st.text_input(label="api_version", help="!!")
+    with col2:
+        if task.model_type == aoai:
             task.azure_endpoint = st.text_input(
                 label="azure_endpoint", help="!!")
+            task.deployment_type = st.selectbox(
+                label='deployment_type', options=deployment_types)
+        if task.model_type == ds:
+            task.azure_endpoint = st.text_input(label="endpoint", help="!!")
+    with col3:
+        if task.model_type == aoai:
+            task.model_id = st.selectbox(label='model_id', options=aoai_models)
+        if task.model_type == ds:
+            task.model_id = st.selectbox(label='model_id', options=ds_models)
+    with col4:
+        if task.model_type == aoai:
             task.deployment_name = st.text_input(
                 label="deployment_name", help="!!")
-        with col2:
-            task.api_version = st.text_input(label="api_version", help="!!")
-            task.deployment_type = st.selectbox(label='deployment_type', options=[
-                'global standed', 'ds'])
-        with col3:
-            task.model_id = st.selectbox(label='model_id', options=aoai_models)
-
-    if task.model_type == ds:
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            task.azure_endpoint = st.text_input(label="endpoint", help="!!")
-        with col2:
+        if task.model_type == ds:
             enable_think = st.selectbox(label="enable_think", options=[
                 'Yes', 'No'])
             if enable_think == 'No':
                 task.enable_think = False
-        with col3:
-            task.model_id = st.selectbox(label='model_id', options=ds_models)
 
     if st.button(label="➕ Create"):
         with st.spinner():
@@ -138,7 +146,9 @@ def render_list():
     tasks: List[TaskTable] = load_all_tasks()
     st.session_state.tasks = tasks
 
-    if st.button(f"Refresh Tasks ({len(st.session_state.tasks)})", key="refresh", icon="🔄"):
+    st.markdown(f"### Tasks ({len(st.session_state.tasks)})")
+
+    if st.button(f"Refresh", key="refresh", icon="🔄"):
         st.session_state.tasks = load_all_tasks()
 
     for task in st.session_state.tasks:
@@ -153,10 +163,26 @@ def home_page():
     task_id = st.query_params.get("task_id", None)
     if task_id:
         return task_page(task_id)
-    with st.expander(label=f"➕ Create Task"):
-        create_task()
+
+    request_id = st.query_params.get("request_id", None)
+    if request_id:
+        return request_page(request_id)
+
+    st.markdown("-----------")
+    create_task()
+    st.markdown("-----------")
 
     render_list()
+
+
+def request_page(request_id: str):
+    request = find_request(request_id)
+    if not request:
+        st.error("request not found")
+        return
+
+    st.write(request)
+    render_chunks(request, 'Chunks')
 
 
 def task_page(task_id: int):
@@ -193,7 +219,7 @@ def task_page(task_id: int):
                 queue_task(task)
                 st.success("Pendding")
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         enable_think = ''
         if task.model_type == ds:
@@ -207,7 +233,6 @@ def task_page(task_id: int):
         st.markdown(
             f"model_type: `{task.model_type}` {enable_think}", unsafe_allow_html=True)
         st.write(f"request_succeed: `{task.request_succeed}`")
-        st.write(f"timeout: `{task.timeout}`")
     with col2:
         st.write(f"created_at: `{task.created_at}`")
         st.write(f"model_id: `{task.model_id}`")
@@ -218,9 +243,20 @@ def task_page(task_id: int):
         st.write(f"threads: `{task.threads}`")
         st.write(f"request_per_thread: `{task.request_per_thread}`")
         st.write(f"request_total: `{task.request_per_thread * task.threads}`")
+    with col4:
+        st.write(f"timeout: `{task.timeout}`")
+        st.write(f"temperature: `{task.temperature}`")
+        st.write(f"content_length: `{task.content_length}`")
 
-    st.write(f"system_prompt: `{task.system_prompt}`")
-    st.write(f"user_prompt: `{task.user_prompt}`")
+    if task.system_prompt:
+        st.text(f"system_prompt: ")
+        st.text_area(label="", label_visibility='hidden',
+                     value=task.system_prompt, height=300)
+
+    if task.user_prompt:
+        st.text(f"user_prompt: ")
+        st.text_area(label="", label_visibility='hidden',
+                     value=task.user_prompt, height=300)
 
     if task.error_message:
         st.error(task.error_message)
@@ -253,20 +289,43 @@ def render_requests(task, status, title):
         requests = load_all_requests(task, status)
         end_time = time_now()
         cost_time = round(end_time-start_time, 2)
+        count = len(requests)
+        if count > 0:
+            st.markdown(f"## {title} ({count})")
+            st.text(f"Query {cost_time} ms")
+
+            with st.container(
+                border=True, height=400
+            ):
+                for request in requests:
+                    st.markdown(
+                        f'`{request.start_req_time_fmt}` {request.id} `{request.request_index}/{request.thread_num}` <a href="/?request_id={request.id}" target="_blank">Logs</a>',
+                        unsafe_allow_html=True
+                    )
+    except Exception as e:
+        st.error(e)
+
+
+def render_chunks(request: TaskRequestChunkTable,  title):
+    try:
+        start_time = time_now()
+        chunks = load_all_chunks(request)
+        end_time = time_now()
+        cost_time = round(end_time-start_time, 2)
         list = []
-        for request in requests:
+
+        for chunk in chunks:
             list.append({
-                "thread_num": request.thread_num,
-                "start_req_time": request.start_req_time,
-                "response": request.response,
-                "success": request.success,
-                "chunks_count": request.chunks_count,
-                "output_token_count": request.output_token_count,
-                "first_token_latency_ms": request.first_token_latency_ms,
-                "request_latency_ms": request.request_latency_ms,
+                "id": chunk.id,
+                "created_at": chunk.created_at,
+                "chunk_index": chunk.chunk_index,
+                "chunk_content": chunk.chunk_content,
+                "token_len": chunk.token_len,
+                "request_latency_ms": chunk.request_latency_ms,
+                "last_token_latency_ms": chunk.last_token_latency_ms
             })
 
-        count = len(requests)
+        count = len(chunks)
         if count > 0:
             st.markdown(f"## {title} ({count})")
             st.text(f"Query {cost_time} ms")

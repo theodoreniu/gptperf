@@ -26,13 +26,15 @@ class TaskRuntime:
         task: TaskTable,
         thread_num: int,
         encoding: tiktoken.Encoding,
-        client
+        client,
+        request_index: int
     ):
         self.task = task
         self.last_token_time = None
         self.thread_num = thread_num
         self.encoding = encoding
         self.client = client
+        self.request_index = request_index
 
     def num_tokens_from_messages(self, task: TaskTable):
         messages = task.query
@@ -50,17 +52,13 @@ class TaskRuntime:
             messages=self.task.query,
             model=self.task.model_id,
             stream=True,
+            temperature=self.task.temperature,
+            max_tokens=self.task.content_length
         )
-
-        self.last_token_time = time_now()
 
         for chunk in response:
             if len(chunk.choices) == 0:
                 continue
-
-            if not task_request.first_token_latency_ms:
-                task_request.first_token_latency_ms = so_far_ms(
-                    task_request.start_req_time)
 
             task_chunk = TaskRequestChunkTable(
                 task_id=self.task.id,
@@ -70,6 +68,16 @@ class TaskRuntime:
                 characters_len=0,
                 created_at=time_now(),
             )
+
+            if not task_request.first_token_latency_ms:
+                task_request.first_token_latency_ms = so_far_ms(
+                    task_request.start_req_time)
+                task_chunk.last_token_latency_ms = 0
+                self.last_token_time = time_now()
+            else:
+                task_chunk.last_token_latency_ms = so_far_ms(
+                    self.last_token_time
+                )
 
             task_request.chunks_count += 1
 
@@ -85,12 +93,6 @@ class TaskRuntime:
 
                 task_request.output_token_count += len(
                     self.encoding.encode(task_chunk.chunk_content))
-            else:
-                print("no content")
-
-            task_chunk.last_token_latency_ms = so_far_ms(
-                self.last_token_time
-            )
 
             task_chunk.request_latency_ms = so_far_ms(
                 task_request.start_req_time
@@ -110,23 +112,19 @@ class TaskRuntime:
             host=self.task.azure_endpoint,
             headers={
                 'api-key': self.task.api_key
-            }
+            },
         )
 
         stream = client.chat(
             model=self.task.model_id,
             messages=self.task.query,
-            stream=True
+            stream=True,
+            options={
+                "temperature": self.task.temperature
+            },
         )
 
-        self.last_token_time = time_now()
-
         for chunk in stream:
-
-            if not task_request.first_token_latency_ms:
-                task_request.first_token_latency_ms = so_far_ms(
-                    task_request.start_req_time)
-
             task_chunk = TaskRequestChunkTable(
                 task_id=self.task.id,
                 thread_num=self.thread_num,
@@ -135,6 +133,16 @@ class TaskRuntime:
                 characters_len=0,
                 created_at=time_now(),
             )
+
+            if not task_request.first_token_latency_ms:
+                task_request.first_token_latency_ms = so_far_ms(
+                    task_request.start_req_time)
+                task_chunk.last_token_latency_ms = 0
+                self.last_token_time = time_now()
+            else:
+                task_chunk.last_token_latency_ms = so_far_ms(
+                    self.last_token_time
+                )
 
             task_chunk.chunk_content = chunk['message']['content']
 
@@ -147,14 +155,8 @@ class TaskRuntime:
 
                 task_request.output_token_count += len(
                     self.encoding.encode(task_chunk.chunk_content))
-            else:
-                print("no content")
 
             task_request.chunks_count += 1
-
-            task_chunk.last_token_latency_ms = so_far_ms(
-                self.last_token_time
-            )
 
             task_chunk.request_latency_ms = so_far_ms(
                 task_request.start_req_time
@@ -181,6 +183,7 @@ class TaskRuntime:
             chunks_count=0,
             created_at=time_now(),
             output_token_count=0,
+            request_index=self.request_index
         )
 
         try:

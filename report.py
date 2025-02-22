@@ -46,6 +46,8 @@ def task_report(task: TaskTable):
 
         "first_token_latency_ms": report_number(f"SELECT first_token_latency_ms FROM {TaskRequestTable.__tablename__} WHERE task_id = {task.id} and success = 1 and first_token_latency_ms is not null;", 0),
 
+        "last_token_latency_ms": report_number(f"SELECT last_token_latency_ms FROM {TaskRequestTable.__tablename__} WHERE task_id = {task.id} and success = 1 and last_token_latency_ms is not null;", 0),
+
         "request_latency_ms": report_number(f"SELECT request_latency_ms FROM {TaskRequestTable.__tablename__} WHERE task_id = {task.id} and success = 1 and request_latency_ms is not null;", 0),
 
         "chunks_count": report_number(f"SELECT chunks_count FROM {TaskRequestTable.__tablename__} WHERE task_id = {task.id} and success = 1 and chunks_count is not null;", 0),

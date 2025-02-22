@@ -19,3 +19,10 @@ ds_models = [
     'deepseek-r1:671b',
     'deepseek-coder:latest'
 ]
+
+deployment_types = [
+    'Global Standard',
+    'Data Zone Standard',
+    'Global Batch',
+    'Data Zone Batch'
+]

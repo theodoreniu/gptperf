@@ -2,4 +2,7 @@
 
 set -e
 
-streamlit run web.py --server.address 0.0.0.0 --server.runOnSave true --server.fileWatcherType poll --browser.gatherUsageStats false
+sudo chmod 666 /var/run/docker.sock
+docker-compose down || true
+# docker-compose down --rm all || true
+docker-compose up

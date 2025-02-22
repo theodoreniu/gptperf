@@ -8,9 +8,14 @@ import tiktoken
 from openai import AzureOpenAI, OpenAI
 
 
-def safe_create_and_run_task(task: TaskTable, thread_num: int,  encoding: tiktoken.Encoding, client):
+def safe_create_and_run_task(task: TaskTable, thread_num: int,  encoding: tiktoken.Encoding, client, request_index: int):
     task_runtime = TaskRuntime(
-        task=task, thread_num=thread_num, encoding=encoding, client=client)
+        task=task,
+        thread_num=thread_num,
+        encoding=encoding,
+        client=client,
+        request_index=request_index
+    )
     task_runtime.latency()
 
 
@@ -46,9 +51,9 @@ def task_executor(task: TaskTable):
     with ThreadPoolExecutor(max_workers=task.threads) as executor:
         futures = [
             executor.submit(safe_create_and_run_task, task,
-                            thread_index + 1, encoding, client)
+                            thread_index + 1, encoding, client, request_index+1)
             for thread_index in range(task.threads)
-            for _ in range(task.request_per_thread)
+            for request_index in range(task.request_per_thread)
         ]
 
     for future in futures:

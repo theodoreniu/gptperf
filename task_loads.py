@@ -147,7 +147,25 @@ def load_all_requests(task: TaskTable, success: int) -> List[TaskRequestTable]:
         TaskRequestTable.task_id == task.id,
         TaskRequestTable.success == success
     ).order_by(
-        TaskRequestTable.start_req_time.desc()
+        TaskRequestTable.request_index.desc()
+    ).limit(
+        10000
+    ).all()
+
+    session.close()
+
+    return results
+
+
+def load_all_chunks(request: TaskRequestChunkTable) -> List[TaskRequestChunkTable]:
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    results = session.query(
+        TaskRequestChunkTable
+    ).filter(
+        TaskRequestChunkTable.request_id == request.id,
+    ).order_by(
+        TaskRequestChunkTable.created_at.asc()
     ).limit(
         10000
     ).all()
@@ -185,3 +203,17 @@ def find_task(task_id: int) -> TaskTable | None:
     session.close()
 
     return task
+
+
+def find_request(request_id: int) -> TaskRequestTable | None:
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    request = session.query(
+        TaskRequestTable
+    ).filter(
+        TaskRequestTable.id == request_id
+    ).first()
+
+    session.close()
+
+    return request

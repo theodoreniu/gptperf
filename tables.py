@@ -1,7 +1,7 @@
 
 
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, Boolean, BigInteger
+from sqlalchemy import Column, Integer, String, Boolean, BigInteger, Float
 from datetime import datetime
 from sqlalchemy import Column, BigInteger, Integer
 from sqlalchemy.ext.declarative import declarative_base
@@ -29,6 +29,8 @@ class TaskTable(Base):
     deployment_type = Column(String)
     feishu_token = Column(String)
     request_per_thread = Column(Integer)
+    content_length = Column(Integer)
+    temperature = Column(Float)
     timeout = Column(Integer)
     threads = Column(Integer)
     status = Column(Integer)
@@ -109,6 +111,7 @@ class TaskRequestTable(Base):
     chunks_count = Column(Integer, default=0)
     first_token_latency_ms = Column(Integer)
     last_token_latency_ms = Column(Integer)
+    request_index = Column(Integer)
     request_latency_ms = Column(Integer)
     success = Column(Integer)
     end_req_time = Column(BigInteger, nullable=True)
@@ -117,6 +120,12 @@ class TaskRequestTable(Base):
                         default=lambda: int(time_now()))
     completed_at = Column(BigInteger, nullable=True,
                           default=lambda: int(time_now()))
+
+    @property
+    def start_req_time_fmt(self):
+        timestamp_sec = self.start_req_time / 1000
+        dt_object = datetime.fromtimestamp(timestamp_sec)
+        return dt_object.strftime('%Y-%m-%d %H:%M:%S')
 
 
 class TaskRequestChunkTable(Base):

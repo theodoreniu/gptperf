@@ -1,22 +1,15 @@
-import datetime
 import uuid
 from dotenv import load_dotenv
-from openai import AzureOpenAI
 import tiktoken
 from sqlalchemy import update
-from helper import so_far_ms, time_now
+from helper import get_mysql_session, so_far_ms, time_now
 from tables import TaskRequestChunkTable, TaskRequestTable
-from task_loads import TaskTable, sql_string
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine
+from task_loads import TaskTable
 import traceback
-from config import aoai, ds
-from ollama import chat, pull, Client
+from config import aoai
+from ollama import Client
 
 load_dotenv()
-
-
-engine = create_engine(sql_string)
 
 
 class TaskRuntime:
@@ -172,8 +165,7 @@ class TaskRuntime:
 
     def latency(self):
 
-        Session = sessionmaker(bind=engine)
-        session = Session()
+        session = get_mysql_session()
 
         task_request = TaskRequestTable(
             id=uuid.uuid4(),

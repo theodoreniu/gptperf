@@ -1,80 +1,29 @@
 
 
-import os
-
 from typing import List
-from dotenv import load_dotenv
 
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
+
+from sqlalchemy import text
 
 from tables import TaskRequestChunkTable, TaskRequestTable, TaskTable
-
+from dotenv import load_dotenv
 load_dotenv()
 
-user = os.getenv("MYSQL_USER")
-password = os.getenv("MYSQL_PASSWORD")
-host = os.getenv("MYSQL_HOST")
-database = os.getenv("MYSQL_DB")
 
-sql_string = f'mysql+pymysql://{user}:{password}@{host}/{database}'
-
-engine = create_engine(sql_string)
-
-
-def sql_query(sql: str):
+def sql_query(session, sql: str):
     print(sql)
 
-    Session = sessionmaker(bind=engine)
-    session = Session()
     session.execute(text(sql))
 
     return session.execute(text(sql))
 
 
-def truncate_table(table_name: str):
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    session.execute(text(f"TRUNCATE TABLE {table_name};"))
-    session.commit()
-
-
-def sql_commit(sql: str):
-    Session = sessionmaker(bind=engine)
-    session = Session()
+def sql_commit(session, sql: str):
     session.execute(text(sql))
     session.commit()
 
 
-def update_status(task: TaskTable, status: int):
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    session.query(TaskTable).filter(
-        TaskTable.id == task.id).update({TaskTable.status: status})
-    session.commit()
-
-
-def queue_task(task: TaskTable):
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    session.query(TaskTable).filter(
-        TaskTable.id == task.id).update(
-            {
-                TaskTable.status: 1,
-                TaskTable.request_succeed: 0,
-                TaskTable.request_failed: 0,
-            }
-    )
-    session.commit()
-
-
-def run_task(task: TaskTable):
-    update_status(task, 2)
-
-
-def error_task(task: TaskTable, message: str):
-    Session = sessionmaker(bind=engine)
-    session = Session()
+def error_task(session, task: TaskTable, message: str):
     session.query(
         TaskTable
     ).filter(
@@ -88,9 +37,7 @@ def error_task(task: TaskTable, message: str):
     session.commit()
 
 
-def succeed_task(task: TaskTable):
-    Session = sessionmaker(bind=engine)
-    session = Session()
+def succeed_task(session, task: TaskTable):
     session.query(TaskTable).filter(
         TaskTable.id == task.id
     ).update(
@@ -102,45 +49,26 @@ def succeed_task(task: TaskTable):
     session.commit()
 
 
-def delete_task(task: TaskTable):
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    session.delete(task)
-    session.commit()
-
-
-def delete_task_data(task: TaskTable):
+def delete_task_data(session, task: TaskTable):
     sql_commit(
-        f'delete from {TaskRequestTable.__tablename__} where task_id = {task.id}')
+        session, f'delete from {TaskRequestTable.__tablename__} where task_id = {task.id}')
     sql_commit(
-        f'delete from {TaskRequestChunkTable.__tablename__} where task_id = {task.id}')
+        session, f'delete from {TaskRequestChunkTable.__tablename__} where task_id = {task.id}')
 
 
-def add_task(task: TaskTable) -> TaskTable:
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    session.add(task)
-    session.commit()
-    return task
+def load_all_tasks(session) -> List[TaskTable]:
 
-
-def load_all_tasks() -> List[TaskTable]:
-    Session = sessionmaker(bind=engine)
-    session = Session()
     results = session.query(
         TaskTable
     ).order_by(
         TaskTable.created_at.desc()
     ).all()
-
     session.close()
 
     return results
 
 
-def load_all_requests(task: TaskTable, success: int) -> List[TaskRequestTable]:
-    Session = sessionmaker(bind=engine)
-    session = Session()
+def load_all_requests(session, task: TaskTable, success: int) -> List[TaskRequestTable]:
     results = session.query(
         TaskRequestTable
     ).filter(
@@ -152,14 +80,10 @@ def load_all_requests(task: TaskTable, success: int) -> List[TaskRequestTable]:
         10000
     ).all()
 
-    session.close()
-
     return results
 
 
-def load_all_chunks(request: TaskRequestChunkTable) -> List[TaskRequestChunkTable]:
-    Session = sessionmaker(bind=engine)
-    session = Session()
+def load_all_chunks(session, request: TaskRequestChunkTable) -> List[TaskRequestChunkTable]:
     results = session.query(
         TaskRequestChunkTable
     ).filter(
@@ -170,14 +94,10 @@ def load_all_chunks(request: TaskRequestChunkTable) -> List[TaskRequestChunkTabl
         10000
     ).all()
 
-    session.close()
-
     return results
 
 
-def load_queue_tasks() -> List[TaskTable]:
-    Session = sessionmaker(bind=engine)
-    session = Session()
+def load_queue_tasks(session) -> List[TaskTable]:
     results = session.query(
         TaskTable
     ).filter(
@@ -186,34 +106,14 @@ def load_queue_tasks() -> List[TaskTable]:
         TaskTable.created_at.desc()
     ).limit(1).all()
 
-    session.close()
-
     return results
 
 
-def find_task(task_id: int) -> TaskTable | None:
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    task = session.query(
-        TaskTable
-    ).filter(
-        TaskTable.id == task_id
-    ).first()
-
-    session.close()
-
-    return task
-
-
-def find_request(request_id: int) -> TaskRequestTable | None:
-    Session = sessionmaker(bind=engine)
-    session = Session()
+def find_request(session, request_id: int) -> TaskRequestTable | None:
     request = session.query(
         TaskRequestTable
     ).filter(
         TaskRequestTable.id == request_id
     ).first()
-
-    session.close()
 
     return request

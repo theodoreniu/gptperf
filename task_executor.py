@@ -19,7 +19,7 @@ def safe_create_and_run_task(task: TaskTable, thread_num: int,  encoding: tiktok
     task_runtime.latency()
 
 
-def task_executor(task: TaskTable):
+def task_executor(session, task: TaskTable):
 
     if task.feishu_token:
         feishu_text(
@@ -59,6 +59,6 @@ def task_executor(task: TaskTable):
     for future in futures:
         try:
             future.result()
-            succeed_task(task)
+            succeed_task(session, task)
         except Exception as e:
             print(f"Threads Failed: {e}")

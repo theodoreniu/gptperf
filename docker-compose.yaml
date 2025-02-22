@@ -1,0 +1,51 @@
+version: "3.8"
+
+services:
+  worker_web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    working_dir: /app
+    environment:
+      TZ: "Asia/Shanghai"
+    command: >
+      streamlit run worker_web.py --server.port 9876 --server.address 0.0.0.0 --server.runOnSave true --server.fileWatcherType poll --browser.gatherUsageStats false
+    volumes:
+      - ./:/app
+    ports:
+      - "9876:9876"
+    networks:
+      - app-network
+
+  worker_request:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    command: python worker_request.py
+    volumes:
+      - ./:/app
+    working_dir: /app
+    networks:
+      - app-network
+
+  worker_sql:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    command: python worker_sql.py
+    volumes:
+      - ./:/app
+    working_dir: /app
+    networks:
+      - app-network
+
+  redis:
+    image: redis:latest
+    ports:
+      - "3679:6379"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

@@ -8,7 +8,13 @@ Copy and set up the environment variables from `.env.example`.
 cp .env.example .env
 ```
 
-## 2. Launch your App
+## 2. Config your account
+
+```bash
+cp config.example.yaml config.yaml
+```
+
+## 3. Launch your App
 
 Copy and set up the environment variables.
 

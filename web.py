@@ -2,7 +2,6 @@
 from config import aoai, ds
 import logging
 import sys
-from time import sleep
 import streamlit as st
 import os
 from dotenv import load_dotenv
@@ -223,29 +222,38 @@ def task_page(task_id: int):
                 st.markdown("## Report")
                 st.table(df)
             except Exception as e:
-                print(e)
+                st.error(e)
 
-        with st.spinner(text="Loading Requests..."):
-            try:
-                requests = load_all_requests(task)
-                list = []
-                for request in requests:
-                    list.append({
-                        "thread_num": request.thread_num,
-                        "start_req_time": request.start_req_time,
-                        "response": request.response,
-                        "success": request.success,
-                        "chunks_count": request.chunks_count,
-                        "output_token_count": request.output_token_count,
-                        "first_token_latency_ms": request.first_token_latency_ms,
-                        "request_latency_ms": request.request_latency_ms,
-                    })
+        with st.spinner(text="Loading Failed Requests..."):
+            requests = load_all_requests(task, 0)
+            render_requests(requests, 'Failed Requests')
 
-                if len(requests) > 0:
-                    st.markdown("## Requests")
-                    st.dataframe(list, use_container_width=True)
-            except Exception as e:
-                print(e)
+        with st.spinner(text="Loading Succeed Requests..."):
+            requests = load_all_requests(task, 1)
+            render_requests(requests, 'Succeed Requests')
+
+
+def render_requests(requests, title):
+    try:
+        list = []
+        for request in requests:
+            list.append({
+                "thread_num": request.thread_num,
+                "start_req_time": request.start_req_time,
+                "response": request.response,
+                "success": request.success,
+                "chunks_count": request.chunks_count,
+                "output_token_count": request.output_token_count,
+                "first_token_latency_ms": request.first_token_latency_ms,
+                "request_latency_ms": request.request_latency_ms,
+            })
+
+        count = len(requests)
+        if count > 0:
+            st.markdown(f"## {title} ({count})")
+            st.dataframe(list, use_container_width=True)
+    except Exception as e:
+        st.error(e)
 
 
 if __name__ == "__main__":

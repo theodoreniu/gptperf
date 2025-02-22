@@ -44,8 +44,71 @@ class TaskRuntime:
         num_tokens += 3
         return num_tokens
 
+    def deal_aoai(self, task_request: TaskRequestChunkTable, session) -> TaskRequestChunkTable:
+        response = self.client.chat.completions.create(
+            messages=self.task.query,
+            model=self.task.model_id,
+            stream=True,
+        )
+
+        self.last_token_time = time_now()
+
+        for chunk in response:
+            if len(chunk.choices) > 0:
+
+                if not task_request.first_token_latency_ms:
+                    task_request.first_token_latency_ms = so_far_ms(
+                        task_request.start_req_time)
+
+                task_chunk = TaskRequestChunkTable(
+                    task_id=self.task.id,
+                    thread_num=self.thread_num,
+                    request_id=task_request.id,
+                    token_len=0,
+                    characters_len=0,
+                    created_at=time_now(),
+                )
+
+                delta = chunk.choices[0].delta
+
+                if delta.content:
+                    task_request.response += delta.content
+                else:
+                    print("no content")
+
+                task_request.chunks_count += 1
+
+                if delta.role:
+                    print(delta.role + ": ", end="", flush=True)
+
+                if delta.content:
+                    task_chunk.token_len += len(
+                        self.encoding.encode(delta.content))
+                    task_chunk.characters_len += len(delta.content)
+
+                    print(delta.content, end="", flush=True)
+
+                    task_request.output_token_count += len(
+                        self.encoding.encode(chunk.choices[0].delta.content))
+
+                task_chunk.last_token_latency_ms = so_far_ms(
+                    self.last_token_time
+                )
+
+                task_chunk.request_latency_ms = so_far_ms(
+                    task_request.start_req_time
+                )
+
+                task_chunk.chunk_content = delta.content
+                task_chunk.chunk_index = task_request.chunks_count
+
+                self.last_token_time = time_now()
+
+                session.add(task_chunk)
+                session.commit()
+        return task_request
+
     def latency(self):
-        print(f"Task {self.task.id}")
 
         Session = sessionmaker(bind=engine)
         session = Session()
@@ -66,67 +129,7 @@ class TaskRuntime:
 
             task_request.start_req_time = time_now()
 
-            response = self.client.chat.completions.create(
-                messages=self.task.query,
-                model=self.task.model_id,
-                stream=True,
-            )
-
-            self.last_token_time = time_now()
-
-            for chunk in response:
-                if len(chunk.choices) > 0:
-
-                    if not task_request.first_token_latency_ms:
-                        task_request.first_token_latency_ms = so_far_ms(
-                            task_request.start_req_time)
-
-                    task_chunk = TaskRequestChunkTable(
-                        task_id=self.task.id,
-                        thread_num=self.thread_num,
-                        request_id=task_request.id,
-                        token_len=0,
-                        characters_len=0,
-                        created_at=time_now(),
-                    )
-
-                    delta = chunk.choices[0].delta
-
-                    if delta.content:
-                        task_request.response += delta.content
-                    else:
-                        print("no content")
-
-                    task_request.chunks_count += 1
-
-                    if delta.role:
-                        print(delta.role + ": ", end="", flush=True)
-
-                    if delta.content:
-                        task_chunk.token_len += len(
-                            self.encoding.encode(delta.content))
-                        task_chunk.characters_len += len(delta.content)
-
-                        print(delta.content, end="", flush=True)
-
-                        task_request.output_token_count += len(
-                            self.encoding.encode(chunk.choices[0].delta.content))
-
-                    task_chunk.last_token_latency_ms = so_far_ms(
-                        self.last_token_time
-                    )
-
-                    task_chunk.request_latency_ms = so_far_ms(
-                        task_request.start_req_time
-                    )
-
-                    task_chunk.chunk_content = delta.content
-                    task_chunk.chunk_index = task_request.chunks_count
-
-                    self.last_token_time = time_now()
-
-                    session.add(task_chunk)
-                    session.commit()
+            task_request = self.deal_aoai(task_request, session)
 
             task_request.end_req_time = time_now()
             task_request.request_latency_ms = (

@@ -22,7 +22,9 @@ sql_string = f'mysql+pymysql://{user}:{password}@{host}/{database}'
 engine = create_engine(sql_string)
 
 
-def sql(sql: str):
+def sql_query(sql: str):
+    print(sql)
+
     Session = sessionmaker(bind=engine)
     session = Session()
     session.execute(text(sql))
@@ -34,6 +36,13 @@ def truncate_table(table_name: str):
     Session = sessionmaker(bind=engine)
     session = Session()
     session.execute(text(f"TRUNCATE TABLE {table_name};"))
+    session.commit()
+
+
+def sql_commit(sql: str):
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    session.execute(text(sql))
     session.commit()
 
 
@@ -122,17 +131,18 @@ def load_all_tasks() -> List[TaskTable]:
     return results
 
 
-def load_all_requests(task: TaskTable) -> List[TaskRequestTable]:
+def load_all_requests(task: TaskTable, success: int) -> List[TaskRequestTable]:
     Session = sessionmaker(bind=engine)
     session = Session()
     results = session.query(
         TaskRequestTable
     ).filter(
-        TaskRequestTable.task_id == task.id
+        TaskRequestTable.task_id == task.id,
+        TaskRequestTable.success == success
     ).order_by(
         TaskRequestTable.start_req_time.desc()
     ).limit(
-        1000
+        10000
     ).all()
 
     session.close()

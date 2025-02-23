@@ -1,3 +1,10 @@
+not_support_stream = [
+    "o1-mini",
+    # 以下 stream 为 true 不报错，只能拿到空字符串
+    "o1",
+    "o3-mini",
+]
+
 aoai = 'AOAI'
 aoai_models = [
     'gpt-4o',

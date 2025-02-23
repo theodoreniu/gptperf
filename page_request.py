@@ -70,6 +70,12 @@ def request_page(request_id: str):
     with col3:
         st.markdown(f"success: `{request.success}`")
 
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown(f"start_req_time_fmt: `{request.start_req_time_fmt}`")
+    with col2:
+        st.markdown(f"end_req_time_fmt: `{request.end_req_time_fmt}`")
+
     st.text_area(label="response: ", value=request.response, height=250)
 
     render_chunks(request, '🚀 Chunks')

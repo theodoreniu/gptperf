@@ -1,8 +1,9 @@
+from time import sleep
 from dotenv import load_dotenv
 import tiktoken
 from helper import data_id, redis_client, so_far_ms, time_now
 from serialize import request_enqueue
-from config import aoai, ds, ds_foundry
+from config import aoai, ds, ds_foundry, not_support_stream
 
 from tables import Tasks
 from logger import logger
@@ -34,6 +35,7 @@ class TaskRuntime:
         self.encoding = encoding
         self.request_index = request_index
         self.redis = redis_client()
+        self.stream = False if self.task.model_id in not_support_stream else True
 
     def num_tokens_from_messages(self, task: Tasks):
         if task.model_type != aoai:
@@ -240,67 +242,87 @@ class TaskRuntime:
 
         response = None
 
-        if self.task.model_id == "o3-mini":
+        if self.task.model_id in ["o3-mini", "o1-mini", "o1"]:
             response = client.chat.completions.create(
                 messages=self.task.query,
                 model=self.task.model_id,
-                stream=True,
+                stream=self.stream,
+                # TODO not support yet
+                # temperature=self.task.temperature,
                 max_completion_tokens=self.task.content_length
             )
         else:
             response = client.chat.completions.create(
                 messages=self.task.query,
                 model=self.task.model_id,
-                stream=True,
+                stream=self.stream,
                 temperature=self.task.temperature,
                 max_tokens=self.task.content_length
             )
 
-        for chunk in response:
-            if len(chunk.choices) == 0:
-                continue
+        if not self.stream:
+            request.response = response.choices[0].message.content
 
-            task_chunk = Chunks(
-                id=data_id(),
-                task_id=self.task.id,
-                thread_num=self.thread_num,
-                request_id=request.id,
-                token_len=0,
-                characters_len=0,
-                created_at=time_now(),
-                user_id=self.task.user_id,
-                chunk_content=chunk.choices[0].delta.content,
-            )
-
-            if not request.first_token_latency_ms:
-                request.first_token_latency_ms = so_far_ms(
-                    request.start_req_time)
-                task_chunk.last_token_latency_ms = 0
-                self.last_token_time = time_now()
-            else:
-                task_chunk.last_token_latency_ms = so_far_ms(
-                    self.last_token_time
-                )
-                self.last_token_time = time_now()
-
-            request.chunks_count += 1
-
-            if task_chunk.chunk_content:
-                logger.info(task_chunk.chunk_content)
-                request.response += task_chunk.chunk_content
-                task_chunk.token_len += len(
-                    self.encoding.encode(task_chunk.chunk_content))
-                task_chunk.characters_len += len(task_chunk.chunk_content)
-
-                request.output_token_count += len(
-                    self.encoding.encode(task_chunk.chunk_content))
-
-            task_chunk.request_latency_ms = so_far_ms(
+            request.first_token_latency_ms = so_far_ms(
                 request.start_req_time
             )
 
-            task_chunk.chunk_index = request.chunks_count
+            request.request_latency_ms = so_far_ms(
+                request.start_req_time
+            )
 
-            chunk_enqueue(self.redis, task_chunk)
+            request.chunks_count = 1
+
+            request.output_token_count += len(
+                self.encoding.encode(request.response)
+            )
+
+        if self.stream:
+            for chunk in response:
+                if len(chunk.choices) == 0:
+                    continue
+
+                task_chunk = Chunks(
+                    id=data_id(),
+                    task_id=self.task.id,
+                    thread_num=self.thread_num,
+                    request_id=request.id,
+                    token_len=0,
+                    characters_len=0,
+                    created_at=time_now(),
+                    user_id=self.task.user_id,
+                    chunk_content=chunk.choices[0].delta.content,
+                )
+
+                if not request.first_token_latency_ms:
+                    request.first_token_latency_ms = so_far_ms(
+                        request.start_req_time)
+                    task_chunk.last_token_latency_ms = 0
+                    self.last_token_time = time_now()
+                else:
+                    task_chunk.last_token_latency_ms = so_far_ms(
+                        self.last_token_time
+                    )
+                    self.last_token_time = time_now()
+
+                request.chunks_count += 1
+
+                if task_chunk.chunk_content:
+                    logger.info(task_chunk.chunk_content)
+                    request.response += task_chunk.chunk_content
+                    task_chunk.token_len += len(
+                        self.encoding.encode(task_chunk.chunk_content))
+                    task_chunk.characters_len += len(task_chunk.chunk_content)
+
+                    request.output_token_count += len(
+                        self.encoding.encode(task_chunk.chunk_content))
+
+                task_chunk.request_latency_ms = so_far_ms(
+                    request.start_req_time
+                )
+
+                task_chunk.chunk_index = request.chunks_count
+
+                chunk_enqueue(self.redis, task_chunk)
 
         return request

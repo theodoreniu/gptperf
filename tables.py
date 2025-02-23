@@ -66,6 +66,13 @@ class Tasks(Base):
 
     @property
     def query(self):
+
+        if self.model_id == "o1-mini":
+            return [
+                {"role": "assistant", "content": self.system_prompt},
+                {"role": "user", "content": self.user_prompt},
+            ]
+
         return [
             {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": self.user_prompt},
@@ -138,6 +145,14 @@ class Requests(Base):
         if not self.start_req_time:
             return "N/A"
         timestamp_sec = self.start_req_time / 1000
+        dt_object = datetime.fromtimestamp(timestamp_sec)
+        return dt_object.strftime('%Y-%m-%d %H:%M:%S')
+
+    @property
+    def end_req_time_fmt(self):
+        if not self.end_req_time:
+            return "N/A"
+        timestamp_sec = self.end_req_time / 1000
         dt_object = datetime.fromtimestamp(timestamp_sec)
         return dt_object.strftime('%Y-%m-%d %H:%M:%S')
 

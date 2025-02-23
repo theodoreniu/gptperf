@@ -1,15 +1,14 @@
 
 
 from typing import List
-
-
-from sqlalchemy import text, update
-
-from tables import TaskRequestChunkTable, TaskRequestTable, TaskTable
+from sqlalchemy import text
 from dotenv import load_dotenv
 
-
 import logging
+from sqlalchemy.orm.session import Session
+from tables.chunks import Chunks
+from tables.requests import Requests
+from tables.tasks import Tasks
 
 
 logging.basicConfig(
@@ -25,23 +24,23 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 
-def sql_query(session, sql: str):
+def sql_query(session: Session, sql: str):
     session.execute(text(sql))
 
     return session.execute(text(sql))
 
 
-def sql_commit(session, sql: str):
+def sql_commit(session: Session, sql: str):
     session.execute(text(sql))
     session.commit()
 
 
-def queue_task(session, task: TaskTable):
+def queue_task(session: Session, task: Tasks):
     task.status = 1
     session.commit()
 
 
-def run_task(session, task: TaskTable):
+def run_task(session: Session, task: Tasks):
     task.status = 2
     task.error_message = ""
     task.request_failed = 0
@@ -49,43 +48,43 @@ def run_task(session, task: TaskTable):
     session.commit()
 
 
-def error_task(session, task: TaskTable, message: str):
+def error_task(session: Session, task: Tasks, message: str):
     task.status = 3
     task.error_message = message
     session.commit()
 
 
-def succeed_task(session, task: TaskTable):
+def succeed_task(session: Session, task: Tasks):
     task.status = 4
     task.error_message = ""
     session.commit()
 
 
-def delete_task_data(session, task: TaskTable):
+def delete_task_data(session: Session, task: Tasks):
     sql_commit(
-        session, f'delete from {TaskRequestTable.__tablename__} where task_id = {task.id}')
+        session, f'delete from {Requests.__tablename__} where task_id = {task.id}')
     sql_commit(
-        session, f'delete from {TaskRequestChunkTable.__tablename__} where task_id = {task.id}')
+        session, f'delete from {Chunks.__tablename__} where task_id = {task.id}')
 
 
-def load_all_tasks(session) -> List[TaskTable]:
+def load_all_tasks(session: Session) -> List[Tasks]:
     results = session.query(
-        TaskTable
+        Tasks
     ).order_by(
-        TaskTable.created_at.desc()
+        Tasks.created_at.desc()
     ).all()
 
     return results
 
 
-def load_all_requests(session, task: TaskTable, success: int) -> List[TaskRequestTable]:
+def load_all_requests(session: Session, task: Tasks, success: int) -> List[Requests]:
     results = session.query(
-        TaskRequestTable
+        Requests
     ).filter(
-        TaskRequestTable.task_id == task.id,
-        TaskRequestTable.success == success
+        Requests.task_id == task.id,
+        Requests.success == success
     ).order_by(
-        TaskRequestTable.request_index.desc()
+        Requests.request_index.desc()
     ).limit(
         10000
     ).all()
@@ -93,13 +92,13 @@ def load_all_requests(session, task: TaskTable, success: int) -> List[TaskReques
     return results
 
 
-def load_all_chunks(session, request: TaskRequestChunkTable) -> List[TaskRequestChunkTable]:
+def load_all_chunks(session: Session, request: Chunks) -> List[Chunks]:
     results = session.query(
-        TaskRequestChunkTable
+        Chunks
     ).filter(
-        TaskRequestChunkTable.request_id == request.id,
+        Chunks.request_id == request.id,
     ).order_by(
-        TaskRequestChunkTable.created_at.asc()
+        Chunks.created_at.asc()
     ).limit(
         10000
     ).all()
@@ -107,13 +106,13 @@ def load_all_chunks(session, request: TaskRequestChunkTable) -> List[TaskRequest
     return results
 
 
-def load_queue_tasks(session) -> List[TaskTable]:
+def load_queue_tasks(session: Session) -> List[Tasks]:
     results = session.query(
-        TaskTable
+        Tasks
     ).filter(
-        TaskTable.status == 1
+        Tasks.status == 1
     ).order_by(
-        TaskTable.created_at.asc()
+        Tasks.created_at.asc()
     ).limit(
         1
     ).all()
@@ -121,11 +120,11 @@ def load_queue_tasks(session) -> List[TaskTable]:
     return results
 
 
-def find_request(session, request_id: int) -> TaskRequestTable | None:
+def find_request(session: Session, request_id: int) -> Requests | None:
     request = session.query(
-        TaskRequestTable
+        Requests
     ).filter(
-        TaskRequestTable.id == request_id
+        Requests.id == request_id
     ).first()
 
     return request

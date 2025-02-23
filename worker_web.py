@@ -1,18 +1,16 @@
 
 import streamlit as st
-import os
 from dotenv import load_dotenv
-import yaml
-from yaml.loader import SafeLoader
-import streamlit_authenticator as stauth
 from typing import List
 from helper import get_mysql_session, time_now
+from tables.chunks import Chunks
+from tables.tasks import Tasks
+from users import get_authenticator, register_user
 from report import task_report
-from tables import TaskRequestChunkTable, TaskTable
 from task_form import task_form
 from task_loads import find_request, load_all_chunks, load_all_requests, load_all_tasks
 import pandas as pd
-
+from sqlalchemy.orm.session import Session
 
 import logging
 
@@ -31,10 +29,10 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 
-def create_task(session):
+def create_task(session: Session):
     st.markdown("### Create Task")
 
-    task = TaskTable(
+    task = Tasks(
         status=1,
         enable_think=True,
         created_at=time_now(),
@@ -48,9 +46,9 @@ def create_task(session):
     task_form(task, session, False)
 
 
-def render_list(session):
+def render_list(session: Session):
 
-    tasks: List[TaskTable] = load_all_tasks(session)
+    tasks: List[Tasks] = load_all_tasks(session)
     st.session_state.tasks = tasks
 
     st.markdown(f"### Tasks ({len(st.session_state.tasks)})")
@@ -61,13 +59,12 @@ def render_list(session):
     for task in st.session_state.tasks:
 
         st.markdown(
-            f'{task.status_icon} {task.name} <a href="/?task_id={task.id}" target="_blank">⚙️ Manage</a>',
+            f'{task.status_icon} {task.name} `{task.model_id}` <a href="/?task_id={task.id}" target="_blank">⚙️ Manage</a>',
             unsafe_allow_html=True
         )
 
 
-def home_page():
-    session = get_mysql_session()
+def home_page(session: Session):
 
     task_id = st.query_params.get("task_id", None)
     if task_id:
@@ -84,7 +81,7 @@ def home_page():
     render_list(session)
 
 
-def request_page(session, request_id: str):
+def request_page(session: Session, request_id: str):
     request = find_request(session, request_id)
     if not request:
         st.error("request not found")
@@ -127,21 +124,18 @@ def request_page(session, request_id: str):
 
     st.text_area(label="response: ", value=request.response, height=250)
 
-    render_chunks(session, request, 'Chunks')
+    render_chunks(session, request, '🚀 Chunks')
 
 
-def task_page(session, task_id: int):
+def task_page(session: Session, task_id: int):
     st.markdown("-----------")
     st.session_state.task = task = session.query(
-        TaskTable
+        Tasks
     ).filter(
-        TaskTable.id == task_id
+        Tasks.id == task_id
     ).first()
 
     task = st.session_state.task
-
-    st.markdown(
-        f"## {task.status_icon} {task.name} `{task.status_text}` `{task.progress_percentage}%`")
 
     if task.status > 1:
         st.progress(task.progress_percentage)
@@ -149,6 +143,9 @@ def task_page(session, task_id: int):
     if not task:
         st.error("task not found")
         return
+
+    st.markdown(
+        f"## {task.status_icon} {task.name} `{task.status_text}` `{task.progress_percentage}%`")
 
     task_form(task, session, True)
 
@@ -164,20 +161,20 @@ def task_page(session, task_id: int):
                 end_time = time_now()
                 cost_time = round(end_time-start_time, 2)
                 df = pd.DataFrame.from_dict(data, orient='index')
-                st.markdown("## Report")
+                st.markdown("## 📊 Report")
                 st.text(f"Query {cost_time} ms")
                 st.table(df)
             except Exception as e:
                 st.error(e)
 
         with st.spinner(text="Loading Failed Requests..."):
-            render_requests(session, task, 0, 'Failed Requests')
+            render_requests(session, task, 0, '❌ Failed Requests')
 
         with st.spinner(text="Loading Succeed Requests..."):
-            render_requests(session, task, 1, 'Succeed Requests')
+            render_requests(session, task, 1, '✅ Succeed Requests')
 
 
-def render_requests(session, task, status, title):
+def render_requests(session: Session, task, status, title):
     try:
         start_time = time_now()
         requests = load_all_requests(session, task, status)
@@ -200,7 +197,7 @@ def render_requests(session, task, status, title):
         st.error(e)
 
 
-def render_chunks(session, request: TaskRequestChunkTable,  title):
+def render_chunks(session: Session, request: Chunks,  title):
     try:
         start_time = time_now()
         chunks = load_all_chunks(session, request)
@@ -228,8 +225,7 @@ def render_chunks(session, request: TaskRequestChunkTable,  title):
         st.error(e)
 
 
-if __name__ == "__main__":
-
+def page_title():
     page_title = "LLM Perf"
     st.set_page_config(
         page_title=page_title,
@@ -240,30 +236,26 @@ if __name__ == "__main__":
     st.image("avatars/logo.svg", width=100)
     st.title(page_title)
 
-    if not os.path.exists("./config.yaml"):
-        home_page()
-    else:
-        with open("./config.yaml") as file:
-            yaml_config = yaml.load(file, Loader=SafeLoader)
-            authenticator = stauth.Authenticate(
-                yaml_config["credentials"],
-                yaml_config["cookie"]["name"],
-                yaml_config["cookie"]["key"],
-                yaml_config["cookie"]["expiry_days"],
-            )
 
+if __name__ == "__main__":
+
+    session = get_mysql_session()
+
+    page_title()
+
+    authenticator = get_authenticator(session)
+
+    if st.session_state["authentication_status"]:
+        st.write(f'Welcome `{st.session_state["name"]}`')
+        col1, col2 = st.columns([10, 2])
+        with col1:
+            authenticator.logout()
+        home_page(session)
+    elif st.session_state["authentication_status"] is False:
+        st.error("Username/password is incorrect")
+    elif st.session_state["authentication_status"] is None:
+        col1, col2 = st.columns(2)
+        with col1:
             authenticator.login()
-
-            if st.session_state["authentication_status"]:
-                st.write(
-                    f'Welcome `{st.session_state["name"]}`')
-
-                col1, col2 = st.columns([10, 2])
-                with col1:
-                    authenticator.logout()
-
-                home_page()
-            elif st.session_state["authentication_status"] is False:
-                st.error("Username/password is incorrect")
-            elif st.session_state["authentication_status"] is None:
-                st.warning("Please enter your username and password")
+        with col2:
+            register_user(session)

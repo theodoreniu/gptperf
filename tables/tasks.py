@@ -3,11 +3,7 @@
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, Boolean, BigInteger, Float
 from datetime import datetime
-from sqlalchemy import Column, BigInteger, Integer
-from sqlalchemy.ext.declarative import declarative_base
 from helper import time_now
-
-
 import logging
 
 
@@ -24,7 +20,7 @@ logger = logging.getLogger(__name__)
 Base = declarative_base()
 
 
-class TaskTable(Base):
+class Tasks(Base):
     __tablename__ = 'tasks'
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String)
@@ -111,47 +107,3 @@ class TaskTable(Base):
                 return 'Failed'
             return 'Succeed'
         return 'NA'
-
-
-class TaskRequestTable(Base):
-    __tablename__ = 'tasks_requests'
-    id = Column(String, primary_key=True)
-    task_id = Column(Integer)
-    thread_num = Column(Integer)
-    input_token_count = Column(Integer, default=0)
-    output_token_count = Column(Integer, default=0)
-    response = Column(String)
-    chunks_count = Column(Integer, default=0)
-    first_token_latency_ms = Column(Integer)
-    last_token_latency_ms = Column(Integer)
-    request_index = Column(Integer)
-    request_latency_ms = Column(Integer)
-    success = Column(Integer)
-    end_req_time = Column(BigInteger, nullable=True)
-    start_req_time = Column(BigInteger, nullable=True)
-    created_at = Column(BigInteger, nullable=False,
-                        default=lambda: int(time_now()))
-    completed_at = Column(BigInteger, nullable=True,
-                          default=lambda: int(time_now()))
-
-    @property
-    def start_req_time_fmt(self):
-        timestamp_sec = self.start_req_time / 1000
-        dt_object = datetime.fromtimestamp(timestamp_sec)
-        return dt_object.strftime('%Y-%m-%d %H:%M:%S')
-
-
-class TaskRequestChunkTable(Base):
-    __tablename__ = 'tasks_requests_chunks'
-    id = Column(String, primary_key=True)
-    task_id = Column(Integer)
-    thread_num = Column(Integer)
-    request_id = Column(String)
-    chunk_index = Column(Integer)
-    chunk_content = Column(String)
-    token_len = Column(Integer)
-    characters_len = Column(Integer)
-    request_latency_ms = Column(Integer)
-    last_token_latency_ms = Column(Integer)
-    created_at = Column(BigInteger, nullable=False,
-                        default=lambda: int(time_now()))

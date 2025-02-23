@@ -2,8 +2,9 @@
 from config import aoai, ds, ds_models, aoai_models, deployment_types, model_types
 import streamlit as st
 from dotenv import load_dotenv
-from helper import is_admin
-from tables import TaskTable
+from tables.tasks import Tasks
+from users import is_admin
+from sqlalchemy.orm.session import Session
 from task_loads import delete_task_data, queue_task
 
 
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 
-def task_form(task: TaskTable, session, edit: bool = False):
+def task_form(task: Tasks, session: Session, edit: bool = False):
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:

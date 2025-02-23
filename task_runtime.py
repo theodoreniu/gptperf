@@ -1,16 +1,16 @@
-import uuid
 from dotenv import load_dotenv
 import tiktoken
 from helper import data_id, redis_client, so_far_ms, time_now
 from serialize import chunk_enqueue, request_enqueue
-from tables import TaskRequestChunkTable, TaskRequestTable
-from task_loads import TaskTable
-import traceback
 from config import aoai
 from ollama import Client
 
-
+from sqlalchemy.orm.session import Session
 import logging
+
+from tables.chunks import Chunks
+from tables.requests import Requests
+from tables.tasks import Tasks
 
 
 logging.basicConfig(
@@ -30,7 +30,7 @@ class TaskRuntime:
 
     def __init__(
         self,
-        task: TaskTable,
+        task: Tasks,
         thread_num: int,
         encoding: tiktoken.Encoding,
         client,
@@ -44,7 +44,7 @@ class TaskRuntime:
         self.request_index = request_index
         self.redis = redis_client()
 
-    def num_tokens_from_messages(self, task: TaskTable):
+    def num_tokens_from_messages(self, task: Tasks):
         messages = task.query
         tokens_per_message = 3
         num_tokens = 0
@@ -55,7 +55,7 @@ class TaskRuntime:
         num_tokens += 3
         return num_tokens
 
-    def deal_aoai(self, task_request: TaskRequestChunkTable) -> TaskRequestChunkTable:
+    def deal_aoai(self, task_request: Chunks) -> Chunks:
         response = self.client.chat.completions.create(
             messages=self.task.query,
             model=self.task.model_id,
@@ -68,7 +68,7 @@ class TaskRuntime:
             if len(chunk.choices) == 0:
                 continue
 
-            task_chunk = TaskRequestChunkTable(
+            task_chunk = Chunks(
                 id=data_id(),
                 task_id=self.task.id,
                 thread_num=self.thread_num,
@@ -114,7 +114,7 @@ class TaskRuntime:
 
         return task_request
 
-    def deal_ds(self, task_request: TaskRequestChunkTable) -> TaskRequestChunkTable:
+    def deal_ds(self, task_request: Chunks) -> Chunks:
 
         client = Client(
             host=self.task.azure_endpoint,
@@ -133,7 +133,7 @@ class TaskRuntime:
         )
 
         for chunk in stream:
-            task_chunk = TaskRequestChunkTable(
+            task_chunk = Chunks(
                 id=data_id(),
                 task_id=self.task.id,
                 thread_num=self.thread_num,
@@ -180,7 +180,7 @@ class TaskRuntime:
 
     def latency(self):
 
-        task_request = TaskRequestTable(
+        task_request = Requests(
             id=data_id(),
             task_id=self.task.id,
             thread_num=self.thread_num,

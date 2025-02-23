@@ -21,7 +21,10 @@ Base = declarative_base()
 
 
 def register_user(session):
-    user = Users()
+    user = Users(
+        role="user",
+        created_at=time_now()
+    )
 
     with st.container(border=True):
         st.markdown("### Registration")
@@ -82,7 +85,6 @@ def register_user(session):
             return
 
         user.email = f"{user.username}@microsoft.com"
-        user.created_at = time_now()
         session.add(user)
         session.commit()
         st.success("Registed")
@@ -100,18 +102,16 @@ def load_all_users(session) -> List[Users]:
 
 def get_authenticator(session: Session):
 
-    users = session.query(
-        Users
-    ).order_by(
-        Users.created_at.desc()
-    ).all()
-
-    session.close()
+    users = load_all_users(session)
 
     credentials = {
         "usernames": {
         }
     }
+
+    if len(users) == 0:
+        st.error("No user found")
+        return None
 
     for user in users:
         credentials['usernames'][user.username] = {
@@ -124,8 +124,8 @@ def get_authenticator(session: Session):
 
     return stauth.Authenticate(
         credentials=credentials,
-        cookie_name='random_cookie_name_perf',
-        cookie_key='random_signature_key_llm_perf',
+        cookie_name='random_cookie_name_perf2',
+        cookie_key='random_signature_key_llm_perf2',
         cookie_expiry_days=30,
     )
 

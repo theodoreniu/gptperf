@@ -20,17 +20,17 @@ if __name__ == "__main__":
                     logger.info(f"delete old data ...")
                     delete_task_data(session, task)
                     logger.info(f"start request ...")
-                    task_executor(session, task)
+                    task_executor(task)
                 except Exception as e:
                     error_task(session, task, {e})
                     logger.error(f'Error: {e}', exc_info=True)
 
             if len(tasks) == 0:
                 logger.info("waitting for request ...")
-                sleep(1)
+                sleep(3)
 
         except Exception as e:
             logger.error(f'Error: {e}', exc_info=True)
-            sleep(1)
+            sleep(3)
         finally:
             session.close()

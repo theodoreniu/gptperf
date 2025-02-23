@@ -1,13 +1,11 @@
 
 from tables import Tasks
-from task_loads import succeed_task
 from task_runtime import TaskRuntime
 from theodoretools.bot import feishu_text
 from concurrent.futures import ThreadPoolExecutor
 from config import aoai
 import tiktoken
 from openai import AzureOpenAI, OpenAI
-from sqlalchemy.orm.session import Session
 from logger import logger
 
 
@@ -22,11 +20,11 @@ def safe_create_and_run_task(task: Tasks, thread_num: int,  encoding: tiktoken.E
     task_runtime.latency()
 
 
-def task_executor(session: Session, task: Tasks):
+def task_executor(task: Tasks):
 
     if task.feishu_token:
         feishu_text(
-            f"start to run {task.source_location} {task.target_location} {task.request_per_thread} {task.threads} {task.deployment_type} {task.model_id}",
+            f"start to run {task.source_location} {task.target_location} {task.request_per_thread} {task.threads} {task.model_id}",
             task.feishu_token
         )
 
@@ -64,5 +62,3 @@ def task_executor(session: Session, task: Tasks):
                 logger.info(future.result())
             except Exception as e:
                 logger.error(f'Threads Error: {e}', exc_info=True)
-
-        succeed_task(session, task)

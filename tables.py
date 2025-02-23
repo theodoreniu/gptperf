@@ -93,8 +93,6 @@ class Tasks(Base):
         if self.status == 3:
             return '🔴'
         if self.status == 4:
-            if self.request_succeed == 0:
-                return '🔴'
             return '🟢'
         return '🟤'
 
@@ -109,9 +107,7 @@ class Tasks(Base):
         if self.status == 3:
             return 'Error'
         if self.status == 4:
-            if self.request_succeed == 0:
-                return 'Failed'
-            return 'Succeed'
+            return 'Completed'
         return 'NA'
 
 

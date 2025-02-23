@@ -12,7 +12,7 @@ from tables import Tasks
 from sqlalchemy import update
 import streamlit as st
 from logger import logger
-
+import copy
 
 load_dotenv()
 
@@ -161,7 +161,8 @@ def update_task(task_update: Tasks):
 def add_request(request: Requests):
     session = get_mysql_session()
     try:
-        session.add(request)
+        new_request = copy.deepcopy(request)
+        session.add(new_request)
         session.commit()
     except Exception as e:
         session.rollback()
@@ -173,7 +174,8 @@ def add_request(request: Requests):
 def add_chunk(chunk: Chunks):
     session = get_mysql_session()
     try:
-        session.add(chunk)
+        new_chunk = copy.deepcopy(chunk)
+        session.add(new_chunk)
         session.commit()
     except Exception as e:
         session.rollback()
@@ -185,7 +187,8 @@ def add_chunk(chunk: Chunks):
 def add_user(user: Users):
     session = get_mysql_session()
     try:
-        session.add(user)
+        new_user = copy.deepcopy(user)
+        session.add(new_user)
         session.commit()
     except Exception as e:
         session.rollback()
@@ -219,7 +222,8 @@ def find_user_by_username(username: str):
 def add_task(task: Tasks):
     session = get_mysql_session()
     try:
-        session.add(task)
+        new_task = copy.deepcopy(task)
+        session.add(new_task)
         session.commit()
     except Exception as e:
         session.rollback()

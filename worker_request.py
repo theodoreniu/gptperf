@@ -9,8 +9,9 @@ from logger import logger
 if __name__ == "__main__":
 
     while (True):
+        session = get_mysql_session()
+
         try:
-            session = get_mysql_session()
             tasks: List[Tasks] = load_queue_tasks(session)
             for task in tasks:
                 try:

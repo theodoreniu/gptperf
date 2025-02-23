@@ -11,10 +11,10 @@ from logger import logger
 if __name__ == "__main__":
 
     while (True):
-        try:
-            session = get_mysql_session()
-            redis = redis_client()
+        session = get_mysql_session()
+        redis = redis_client()
 
+        try:
             chunk = chunk_dequeue(redis)
             if chunk:
                 logger.info(chunk.__dict__)
@@ -57,5 +57,7 @@ if __name__ == "__main__":
 
         except Exception as e:
             session.close()
+            redis.close()
+
             logger.error(f'Error: {e}', exc_info=True)
             sleep(1)

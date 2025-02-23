@@ -34,7 +34,7 @@ def create_task():
     st.markdown("### Create Task")
 
     task = Tasks(
-        status=1,
+        status=0,
         desc="",
         enable_think=True,
         created_at=time_now(),

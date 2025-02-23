@@ -231,8 +231,6 @@ def page_title():
 
 if __name__ == "__main__":
 
-    session = get_mysql_session()
-
     page_title()
 
     if not os.path.exists("init.lock"):
@@ -244,6 +242,7 @@ if __name__ == "__main__":
                 f.write("ok")
 
     else:
+        session = get_mysql_session()
         authenticator = get_authenticator(session)
 
         if st.session_state["authentication_status"]:

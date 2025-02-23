@@ -10,43 +10,52 @@ from logger import logger
 
 if __name__ == "__main__":
 
-    session = get_mysql_session()
-    redis_client = redis_client()
-
     while (True):
-        chunk = chunk_dequeue(redis_client)
-        if chunk:
-            logger.info(chunk.__dict__)
-            session.add(chunk)
-            session.commit()
+        try:
+            session = get_mysql_session()
+            redis = redis_client()
 
-        request = request_dequeue(redis_client)
-        if request:
-            logger.info(request.__dict__)
-            session.add(request)
-            session.commit()
+            chunk = chunk_dequeue(redis)
+            if chunk:
+                logger.info(chunk.__dict__)
+                session.add(chunk)
+                session.commit()
 
-            if request.success:
-                session.execute(
-                    update(
-                        Tasks
-                    ).where(
-                        Tasks.id == request.task_id
-                    ).values(
-                        request_succeed=Tasks.request_succeed + 1
+            request = request_dequeue(redis)
+            if request:
+                logger.info(request.__dict__)
+                session.add(request)
+                session.commit()
+
+                if request.success:
+                    session.execute(
+                        update(
+                            Tasks
+                        ).where(
+                            Tasks.id == request.task_id
+                        ).values(
+                            request_succeed=Tasks.request_succeed + 1
+                        )
                     )
-                )
-            else:
-                session.execute(
-                    update(
-                        Tasks
-                    ).where(
-                        Tasks.id == request.task_id
-                    ).values(
-                        request_failed=Tasks.request_failed + 1
+                else:
+                    session.execute(
+                        update(
+                            Tasks
+                        ).where(
+                            Tasks.id == request.task_id
+                        ).values(
+                            request_failed=Tasks.request_failed + 1
+                        )
                     )
-                )
 
-        if not chunk and not request:
-            logger.info("waitting for sql ...")
+            session.close()
+            redis.close()
+
+            if not chunk and not request:
+                logger.info("waitting for sql ...")
+                sleep(1)
+
+        except Exception as e:
+            session.close()
+            logger.error(f'Error: {e}', exc_info=True)
             sleep(1)

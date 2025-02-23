@@ -1,21 +1,21 @@
 
 import streamlit as st
 from dotenv import load_dotenv
-from helper import time_now
+from helper import get_mysql_session, time_now
 from tables import Chunks, Requests
-from task_loads import load_all_chunks
-from sqlalchemy.orm.session import Session
+from task_loads import current_user, is_admin, load_all_chunks
 
-from users import current_user, is_admin
 
 load_dotenv()
 
 
-def request_page(session: Session, request_id: str):
+def request_page(request_id: str):
 
     request = None
 
-    if is_admin(session):
+    session = get_mysql_session()
+
+    if is_admin():
         request = session.query(
             Requests
         ).filter(
@@ -26,8 +26,10 @@ def request_page(session: Session, request_id: str):
             Requests
         ).filter(
             Requests.id == request_id,
-            Requests.user_id == current_user(session).id
+            Requests.user_id == current_user().id
         ).first()
+
+    session.close()
 
     if not request:
         st.error("request not found")
@@ -68,15 +70,21 @@ def request_page(session: Session, request_id: str):
     with col3:
         st.markdown(f"success: `{request.success}`")
 
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown(f"start_req_time_fmt: `{request.start_req_time_fmt}`")
+    with col2:
+        st.markdown(f"end_req_time_fmt: `{request.end_req_time_fmt}`")
+
     st.text_area(label="response: ", value=request.response, height=250)
 
-    render_chunks(session, request, '🚀 Chunks')
+    render_chunks(request, '🚀 Chunks')
 
 
-def render_chunks(session: Session, request: Chunks,  title):
+def render_chunks(request: Chunks,  title):
     try:
         start_time = time_now()
-        chunks = load_all_chunks(session, request)
+        chunks = load_all_chunks(request)
         end_time = time_now()
         cost_time = round(end_time-start_time, 2)
         list = []

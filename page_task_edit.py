@@ -1,14 +1,14 @@
 
-from config import aoai, ds, ds_foundry, ds_models, aoai_models, deployment_types, model_types
+from config import aoai, ds, ds_foundry, ds_models, aoai_models, model_types
 import streamlit as st
 from dotenv import load_dotenv
 from tables import Tasks
-from sqlalchemy.orm.session import Session
-from task_loads import delete_task_data, queue_task
+from task_loads import add_task, delete_task, delete_task_data, queue_task, update_task
+
 load_dotenv()
 
 
-def task_form(task: Tasks, session: Session, edit: bool = False):
+def task_form(task: Tasks, edit: bool = False):
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -191,25 +191,15 @@ def task_form(task: Tasks, session: Session, edit: bool = False):
                         st.error("deployment_name is required.")
                         return
                 if edit:
-                    session.commit()
+                    update_task(task)
+                    st.success("Updated Succeed")
                 else:
-                    session.add(task)
-                    session.commit()
+                    add_task(task)
+                    st.success("Created Succeed")
 
-                st.success("Succeed")
-
-    if task.status != 1 and task.status != 2:
-        delete_btn = st.button(
-            label="🗑️ Delete", key=f"delete_task_{task.id}")
-        if delete_btn:
-            delete_task_data(session, task)
-            session.delete(task)
-            session.commit()
-            st.success("Deleted")
-
-    run_title = "▶ Run"
+    run_title = "🚀 Run"
     if task.status == 2:
-        run_title = "⏸️ Rerun"
+        run_title = "🚀 Rerun"
 
     if task.status != 1:
         run_btn = st.button(
@@ -217,7 +207,15 @@ def task_form(task: Tasks, session: Session, edit: bool = False):
             key=f"run_task_{task.id}"
         )
         if run_btn:
-            queue_task(session, task)
+            queue_task(task)
             st.success("Pendding")
+
+    if task.status != 1 and task.status != 2:
+        delete_btn = st.button(
+            label="🗑️ Delete", key=f"delete_task_{task.id}")
+        if delete_btn:
+            delete_task_data(task)
+            delete_task(task)
+            st.success("Deleted")
 
     st.markdown("----------")

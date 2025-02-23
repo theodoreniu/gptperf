@@ -2,10 +2,11 @@
 import os
 import streamlit as st
 from dotenv import load_dotenv
-from helper import create_db, get_mysql_session
+from helper import create_db
 from page_home import home_page
+from page_user import register_user
 from tables import create_tables, init_user
-from users import get_authenticator, register_user
+from task_loads import get_authenticator
 
 
 load_dotenv()
@@ -36,8 +37,7 @@ if __name__ == "__main__":
                 f.write("ok")
 
     else:
-        session = get_mysql_session()
-        authenticator = get_authenticator(session)
+        authenticator = get_authenticator()
 
         col1, col2 = st.columns(2)
         with col1:
@@ -53,7 +53,7 @@ if __name__ == "__main__":
                 st.error("Alias/Password is incorrect")
         with col2:
             if not st.session_state["authentication_status"]:
-                register_user(session)
+                register_user()
 
         if st.session_state["authentication_status"]:
             st.write(
@@ -62,4 +62,4 @@ if __name__ == "__main__":
             with col1:
                 authenticator.logout()
 
-            home_page(session)
+            home_page()

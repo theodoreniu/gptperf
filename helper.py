@@ -15,7 +15,6 @@ from sqlalchemy import create_engine
 
 load_dotenv()
 
-
 user = os.getenv("MYSQL_USER")
 password = os.getenv("MYSQL_PASSWORD")
 host = os.getenv("MYSQL_HOST")
@@ -55,6 +54,9 @@ def redis_client():
 
 
 def so_far_ms(time):
+    if not time:
+        return 0
+
     return time_now() - time
 
 

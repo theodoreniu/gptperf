@@ -126,33 +126,34 @@ def delete_task(task: Tasks):
         session.close()
 
 
-def update_task(task: Tasks):
+def update_task(task_update: Tasks):
     session = get_mysql_session()
     try:
 
         task = session.query(
             Tasks
         ).filter(
-            Tasks.id == task.id
+            Tasks.id == task_update.id
         ).first()
 
-        task.name = task.name
-        task.model_type = task.model_type
-        task.model_id = task.model_id
-        task.azure_endpoint = task.azure_endpoint
-        task.api_key = task.api_key
-        task.api_version = task.api_version
-        task.deployment_name = task.deployment_name
-        task.timeout = task.timeout
-        task.request_per_thread = task.request_per_thread
-        task.threads = task.threads
-        task.feishu_token = task.feishu_token
-        task.enable_think = task.enable_think
+        task.name = task_update.name
+        task.model_type = task_update.model_type
+        task.model_id = task_update.model_id
+        task.azure_endpoint = task_update.azure_endpoint
+        task.api_key = task_update.api_key
+        task.api_version = task_update.api_version
+        task.deployment_name = task_update.deployment_name
+        task.timeout = task_update.timeout
+        task.request_per_thread = task_update.request_per_thread
+        task.threads = task_update.threads
+        task.feishu_token = task_update.feishu_token
+        task.enable_think = task_update.enable_think
 
         session.commit()
     except Exception as e:
         session.rollback()
         logger.error(f"Error: {e}")
+        st.error(f"Error: {e}")
     finally:
         session.close()
 
@@ -189,6 +190,7 @@ def add_user(user: Users):
     except Exception as e:
         session.rollback()
         logger.error(f"Error: {e}")
+        st.error(f"Error: {e}")
     finally:
         session.close()
 
@@ -208,6 +210,7 @@ def find_user_by_username(username: str):
     except Exception as e:
         session.rollback()
         logger.error(f"Error: {e}")
+        st.error(f"Error: {e}")
         return None
     finally:
         session.close()
@@ -221,6 +224,7 @@ def add_task(task: Tasks):
     except Exception as e:
         session.rollback()
         logger.error(f"Error: {e}")
+        st.error(f"Error: {e}")
     finally:
         session.close()
 
@@ -330,23 +334,22 @@ def delete_task_data(task: Tasks):
 def load_all_tasks() -> List[Tasks]:
     session = get_mysql_session()
 
-    admin = is_admin()
-
     tasks = None
-    if admin:
+
+    if is_admin():
         tasks = session.query(
             Tasks
         ).order_by(
             Tasks.created_at.desc()
         ).all()
-
-    tasks = session.query(
-        Tasks
-    ).order_by(
-        Tasks.created_at.desc()
-    ).filter(
-        Tasks.user_id == current_user().id
-    ).all()
+    else:
+        tasks = session.query(
+            Tasks
+        ).order_by(
+            Tasks.created_at.desc()
+        ).filter(
+            Tasks.user_id == current_user().id
+        ).all()
 
     session.close()
 

@@ -9,8 +9,9 @@ from logger import logger
 if __name__ == "__main__":
 
     while (True):
+        session = get_mysql_session()
+
         try:
-            session = get_mysql_session()
             tasks: List[Tasks] = load_queue_tasks(session)
             for task in tasks:
                 try:
@@ -24,13 +25,12 @@ if __name__ == "__main__":
                     error_task(session, task, {e})
                     logger.error(f'Error: {e}', exc_info=True)
 
-            session.close()
-
             if len(tasks) == 0:
                 logger.info("waitting for request ...")
                 sleep(1)
 
         except Exception as e:
-            session.close()
             logger.error(f'Error: {e}', exc_info=True)
             sleep(1)
+        finally:
+            session.close()

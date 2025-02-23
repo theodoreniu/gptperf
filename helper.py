@@ -1,13 +1,11 @@
 import logging
 import os
 import uuid
-import streamlit as st
 from datetime import datetime
-
-import streamlit as st
 import os
 import redis
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm.session import Session
 from sqlalchemy import create_engine
 from dotenv import load_dotenv
 
@@ -40,19 +38,6 @@ def redis_client():
     return redis.Redis(host=host, port=port, db=0)
 
 
-def is_admin():
-    if not os.path.exists("./config.yaml"):
-        return True
-
-    if (
-        "authentication_status" in st.session_state
-        and st.session_state["authentication_status"]
-    ):
-        return st.session_state["username"].lower() == "admin"
-
-    return True
-
-
 def so_far_ms(time):
     return time_now() - time
 
@@ -61,7 +46,7 @@ def time_now():
     return datetime.now().timestamp() * 1000
 
 
-def get_mysql_session():
+def get_mysql_session() -> Session:
     engine = create_engine(sql_string)
 
     Session = sessionmaker(bind=engine)

@@ -4,9 +4,9 @@ from helper import get_mysql_session, redis_client
 
 import logging
 
-from sqlalchemy import text, update
+from sqlalchemy import update
 from serialize import chunk_dequeue, request_dequeue
-from tables import TaskTable
+from tables.tasks import Tasks
 
 
 logging.basicConfig(
@@ -40,24 +40,24 @@ if __name__ == "__main__":
             if request.success:
                 session.execute(
                     update(
-                        TaskTable
+                        Tasks
                     ).where(
-                        TaskTable.id == request.task_id
+                        Tasks.id == request.task_id
                     ).values(
-                        request_succeed=TaskTable.request_succeed + 1
+                        request_succeed=Tasks.request_succeed + 1
                     )
                 )
             else:
                 session.execute(
                     update(
-                        TaskTable
+                        Tasks
                     ).where(
-                        TaskTable.id == request.task_id
+                        Tasks.id == request.task_id
                     ).values(
-                        request_failed=TaskTable.request_failed + 1
+                        request_failed=Tasks.request_failed + 1
                     )
                 )
 
         if not chunk and not request:
-            logger.info("sleep 5 seconds for sql...")
-            sleep(5)
+            logger.info("sleep 1 seconds for sql...")
+            sleep(1)

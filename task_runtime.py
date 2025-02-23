@@ -5,12 +5,9 @@ from serialize import chunk_enqueue, request_enqueue
 from config import aoai
 from ollama import Client
 
-from sqlalchemy.orm.session import Session
-
 from tables import Chunks
 from tables import Requests
 from tables import Tasks
-
 
 from logger import logger
 
@@ -67,6 +64,7 @@ class TaskRuntime:
                 token_len=0,
                 characters_len=0,
                 created_at=time_now(),
+                user_id=self.task.user_id,
             )
 
             if not task_request.first_token_latency_ms:
@@ -132,6 +130,7 @@ class TaskRuntime:
                 token_len=0,
                 characters_len=0,
                 created_at=time_now(),
+                user_id=self.task.user_id,
             )
 
             if not task_request.first_token_latency_ms:
@@ -179,7 +178,8 @@ class TaskRuntime:
             chunks_count=0,
             created_at=time_now(),
             output_token_count=0,
-            request_index=self.request_index
+            request_index=self.request_index,
+            user_id=self.task.user_id,
         )
 
         try:

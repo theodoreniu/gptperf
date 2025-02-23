@@ -32,6 +32,7 @@ def create_task(session: Session):
         timeout=100000,
         threads=1,
         request_per_thread=1,
+        user_id=current_user(session).id
     )
 
     task_form(task, session, False)

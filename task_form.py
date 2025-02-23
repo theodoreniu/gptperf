@@ -3,7 +3,7 @@ from config import aoai, ds, ds_models, aoai_models, deployment_types, model_typ
 import streamlit as st
 from dotenv import load_dotenv
 from tables import Tasks
-from users import is_admin
+from users import current_user, is_admin
 from sqlalchemy.orm.session import Session
 from task_loads import delete_task_data, queue_task
 from logger import logger
@@ -165,7 +165,7 @@ def task_form(task: Tasks, session: Session, edit: bool = False):
 
     col1, col2, col3 = st.columns([1, 1, 10])
     with col1:
-        if task.status != 1 and task.status != 2:
+        if task.status != 2:
             label = "➕ Create"
             if edit:
                 label = "🔄 Update"

@@ -1,7 +1,7 @@
 
 
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, Boolean, BigInteger, Float
+from sqlalchemy import Column, Integer, String, Boolean, BigInteger, Float, Text
 from datetime import datetime
 from helper import get_mysql_session, time_now
 from logger import logger
@@ -37,8 +37,8 @@ class Tasks(Base):
     api_key = Column(String(1024))
     model_id = Column(String(1024))
     user_id = Column(Integer)
-    system_prompt = Column(String(1024))
-    user_prompt = Column(String(1024))
+    system_prompt = Column(Text)
+    user_prompt = Column(Text)
     source_location = ""
     target_location = ""
     deployment_type = Column(String(1024))

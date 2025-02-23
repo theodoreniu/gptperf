@@ -89,5 +89,4 @@ class TaskRuntime:
             logger.error(f'Error: {e}', exc_info=True)
 
         task_request.completed_at = time_now()
-
         request_enqueue(self.redis, task_request)

@@ -20,7 +20,7 @@ if __name__ == "__main__":
                     logger.info(f"delete old data ...")
                     delete_task_data(session, task)
                     logger.info(f"start request ...")
-                    task_executor(session, task)
+                    task_executor(task)
                 except Exception as e:
                     error_task(session, task, {e})
                     logger.error(f'Error: {e}', exc_info=True)

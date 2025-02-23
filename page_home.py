@@ -37,6 +37,7 @@ def create_task(session: Session):
 
     task = Tasks(
         status=1,
+        desc="",
         enable_think=True,
         created_at=time_now(),
         content_length=2048,
@@ -44,7 +45,8 @@ def create_task(session: Session):
         timeout=100000,
         threads=1,
         request_per_thread=1,
-        user_id=current_user(session).id
+        user_id=current_user(session).id,
+        deployment_type="",
     )
 
     task_form(task, session, False)

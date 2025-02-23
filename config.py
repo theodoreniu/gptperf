@@ -9,6 +9,7 @@ aoai_models = [
 ]
 
 ds = 'DeepSeek (Ollama)'
+ds_foundry = 'DeepSeek (AI Foundry)'
 ds_models = [
     'deepseek-r1:1.5b',
     'deepseek-r1:7b',
@@ -21,7 +22,9 @@ ds_models = [
 ]
 
 model_types = [
-    aoai, ds
+    aoai,
+    ds,
+    ds_foundry
 ]
 
 deployment_types = [

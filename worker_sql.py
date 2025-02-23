@@ -5,7 +5,7 @@ from sqlalchemy import update
 from serialize import chunk_dequeue, request_dequeue
 from tables import Requests, Tasks
 from logger import logger
-from task_loads import succeed_task
+from task_loads import error_task, succeed_task
 
 
 def check_status(session: Session, request: Requests):
@@ -18,8 +18,13 @@ def check_status(session: Session, request: Requests):
     target_requests = task.request_per_thread * task.threads
     total_requested = task.request_succeed + task.request_failed
 
+    if task.request_failed == target_requests:
+        error_task(session, task, "All requests failed")
+        return
+
     if total_requested == target_requests:
         succeed_task(session, task)
+        return
 
 
 if __name__ == "__main__":

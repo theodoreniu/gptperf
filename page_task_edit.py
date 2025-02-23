@@ -192,22 +192,14 @@ def task_form(task: Tasks, edit: bool = False):
                         return
                 if edit:
                     update_task(task)
+                    st.success("Updated Succeed")
                 else:
                     add_task(task)
+                    st.success("Created Succeed")
 
-                st.success("Succeed")
-
-    if task.status != 1 and task.status != 2:
-        delete_btn = st.button(
-            label="🗑️ Delete", key=f"delete_task_{task.id}")
-        if delete_btn:
-            delete_task_data(task)
-            delete_task(task)
-            st.success("Deleted")
-
-    run_title = "▶ Run"
+    run_title = "🚀 Run"
     if task.status == 2:
-        run_title = "⏸️ Rerun"
+        run_title = "🚀 Rerun"
 
     if task.status != 1:
         run_btn = st.button(
@@ -217,5 +209,13 @@ def task_form(task: Tasks, edit: bool = False):
         if run_btn:
             queue_task(task)
             st.success("Pendding")
+
+    if task.status != 1 and task.status != 2:
+        delete_btn = st.button(
+            label="🗑️ Delete", key=f"delete_task_{task.id}")
+        if delete_btn:
+            delete_task_data(task)
+            delete_task(task)
+            st.success("Deleted")
 
     st.markdown("----------")

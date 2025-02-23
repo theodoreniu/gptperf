@@ -119,7 +119,7 @@ class Requests(Base):
     thread_num = Column(Integer)
     input_token_count = Column(Integer, default=0)
     output_token_count = Column(Integer, default=0)
-    response = Column(String(1024))
+    response = Column(Text)
     chunks_count = Column(Integer, default=0)
     first_token_latency_ms = Column(Integer)
     last_token_latency_ms = Column(Integer)

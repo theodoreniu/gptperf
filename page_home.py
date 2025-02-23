@@ -7,8 +7,7 @@ from page_task_edit import task_form
 from tables import Tasks
 from page_request import request_page
 from page_task import task_page
-from task_loads import load_all_tasks
-from users import current_user
+from task_loads import current_user, load_all_tasks
 
 
 load_dotenv()

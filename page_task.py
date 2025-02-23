@@ -5,10 +5,9 @@ from helper import get_mysql_session, time_now
 from page_task_edit import task_form
 from tables import Tasks
 from report import task_report
-from task_loads import load_all_requests
+from task_loads import current_user, is_admin, load_all_requests
 import pandas as pd
 from logger import logger
-from users import current_user, is_admin
 
 
 load_dotenv()
@@ -46,17 +45,17 @@ def task_page(task_id: int):
     st.markdown(
         f"## {task.status_icon} {task.name} `{task.status_text}` `{task.progress_percentage}%`")
 
-    task_form(task, True)
-
     if task.error_message:
         st.error(task.error_message)
+
+    task_form(task, True)
 
     if task.status > 1:
 
         with st.spinner(text="Loading Report..."):
             try:
                 start_time = time_now()
-                data = task_report(session, task)
+                data = task_report(task)
                 end_time = time_now()
                 cost_time = round(end_time-start_time, 2)
                 df = pd.DataFrame.from_dict(data, orient='index')

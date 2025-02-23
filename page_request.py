@@ -3,9 +3,8 @@ import streamlit as st
 from dotenv import load_dotenv
 from helper import get_mysql_session, time_now
 from tables import Chunks, Requests
-from task_loads import load_all_chunks
+from task_loads import current_user, is_admin, load_all_chunks
 
-from users import current_user, is_admin
 
 load_dotenv()
 

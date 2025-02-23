@@ -4,8 +4,9 @@ import streamlit as st
 from dotenv import load_dotenv
 from helper import create_db
 from page_home import home_page
+from page_user import register_user
 from tables import create_tables, init_user
-from users import get_authenticator, register_user
+from task_loads import get_authenticator
 
 
 load_dotenv()

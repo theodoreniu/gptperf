@@ -3,18 +3,64 @@
 from typing import List
 from sqlalchemy import text
 from dotenv import load_dotenv
-
+import streamlit_authenticator as stauth
 from sqlalchemy.orm.session import Session
 from helper import get_mysql_session
 from tables import Chunks, Users
 from tables import Requests
 from tables import Tasks
 from sqlalchemy import update
-
+import streamlit as st
 from logger import logger
-from users import current_user, is_admin
+
 
 load_dotenv()
+
+
+def get_authenticator():
+
+    users = load_all_users()
+
+    credentials = {
+        "usernames": {
+        }
+    }
+
+    if len(users) == 0:
+        st.error("No user found")
+        return None
+
+    for user in users:
+        credentials['usernames'][user.username] = {
+            "id": user.id,
+            "email": user.email,
+            "name": user.name,
+            "password": user.password,
+            "roles": [user.role]
+        }
+
+    return stauth.Authenticate(
+        credentials=credentials,
+        cookie_name='random_cookie_name_perf2',
+        cookie_key='random_signature_key_llm_perf2',
+        cookie_expiry_days=30,
+    )
+
+
+def is_admin() -> bool:
+    return current_user().role == "admin" if current_user() else False
+
+
+def current_user() -> Users | None:
+
+    if 'user' in st.session_state:
+        return st.session_state['user']
+
+    st.session_state['user'] = find_user_by_username(
+        st.session_state["username"]
+    )
+
+    return st.session_state['user']
 
 
 def load_all_users() -> List[Users]:
@@ -31,13 +77,15 @@ def load_all_users() -> List[Users]:
     return results
 
 
-def sql_query(session: Session, sql: str):
+def sql_query(sql: str):
+    session = get_mysql_session()
     session.execute(text(sql))
+    result = session.execute(text(sql))
+    session.close()
+    return result
 
-    return session.execute(text(sql))
 
-
-def sql_commit(session: Session, sql: str):
+def sql_commit(sql: str):
     session = get_mysql_session()
     session.execute(text(sql))
     session.commit()
@@ -146,6 +194,9 @@ def add_user(user: Users):
 
 
 def find_user_by_username(username: str):
+
+    logger.info(f"Finding user by username: {username}")
+
     session = get_mysql_session()
 
     try:
@@ -157,9 +208,9 @@ def find_user_by_username(username: str):
     except Exception as e:
         session.rollback()
         logger.error(f"Error: {e}")
+        return None
     finally:
         session.close()
-        return None
 
 
 def add_task(task: Tasks):
@@ -212,14 +263,14 @@ def error_task(task: Tasks, message: str):
         session.close()
 
 
-def task_request_succeed(request: Requests):
+def task_request_succeed(task_id: int):
     session = get_mysql_session()
     try:
         session.execute(
             update(
                 Tasks
             ).where(
-                Tasks.id == request.task_id
+                Tasks.id == task_id
             ).values(
                 request_succeed=Tasks.request_succeed + 1
             )
@@ -232,14 +283,14 @@ def task_request_succeed(request: Requests):
         session.close()
 
 
-def task_request_failed(request: Requests):
+def task_request_failed(task_id: int):
     session = get_mysql_session()
     try:
         session.execute(
             update(
                 Tasks
             ).where(
-                Tasks.id == request.task_id
+                Tasks.id == task_id
             ).values(
                 request_failed=Tasks.request_failed + 1
             )
@@ -339,10 +390,10 @@ def load_all_chunks(request: Chunks) -> List[Chunks]:
     return results
 
 
-def load_queue_tasks() -> List[Tasks]:
+def task_dequeue() -> Tasks | None:
     session = get_mysql_session()
 
-    results = session.query(
+    task = session.query(
         Tasks
     ).filter(
         Tasks.status == 1
@@ -350,14 +401,14 @@ def load_queue_tasks() -> List[Tasks]:
         Tasks.created_at.asc()
     ).limit(
         1
-    ).all()
+    ).first()
 
     session.close()
 
-    return results
+    return task
 
 
-def find_request(request_id: int) -> Requests | None:
+def find_request(request_id: str) -> Requests | None:
     session = get_mysql_session()
 
     request = session.query(

@@ -15,7 +15,6 @@ from sqlalchemy import create_engine
 
 load_dotenv()
 
-
 user = os.getenv("MYSQL_USER")
 password = os.getenv("MYSQL_PASSWORD")
 host = os.getenv("MYSQL_HOST")

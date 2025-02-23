@@ -1,18 +1,17 @@
 from time import sleep
 from helper import get_mysql_session, redis_client
-from sqlalchemy import update
 from serialize import chunk_dequeue, request_dequeue
-from tables import Requests, Tasks
+from tables import Tasks
 from logger import logger
 from task_loads import add_chunk, add_request, error_task, succeed_task, task_request_failed, task_request_succeed
 
 
-def check_status(request: Requests):
+def check_status(task_id: int):
     session = get_mysql_session()
     task = session.query(
         Tasks
     ).filter(
-        Tasks.id == request.task_id
+        Tasks.id == task_id
     ).first()
     session.close()
 
@@ -37,19 +36,23 @@ if __name__ == "__main__":
         try:
             chunk = chunk_dequeue(redis)
             if chunk:
-                logger.info(chunk.__dict__)
+                # logger.info(chunk.__dict__)
                 add_chunk(chunk)
 
             request = request_dequeue(redis)
             if request:
-                logger.info(request.__dict__)
+                # logger.info(request.__dict__)
+                success = request.success == 1
+                task_id = request.task_id
+
                 add_request(request)
 
-                if request.success:
-                    task_request_succeed(request)
+                if success:
+                    task_request_succeed(task_id)
                 else:
-                    task_request_failed(request)
-                check_status(request)
+                    task_request_failed(task_id)
+
+                check_status(task_id)
 
             if not chunk and not request:
                 logger.info("waitting for sql ...")
@@ -57,6 +60,6 @@ if __name__ == "__main__":
 
         except Exception as e:
             logger.error(f'Error: {e}', exc_info=True)
-            sleep(3)
+            sleep(30)
         finally:
             redis.close()

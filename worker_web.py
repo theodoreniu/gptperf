@@ -1,29 +1,20 @@
 
+import os
 import streamlit as st
 from dotenv import load_dotenv
 from typing import List
-from helper import get_mysql_session, time_now
-from tables.chunks import Chunks
-from tables.tasks import Tasks
-from users import get_authenticator, register_user
+from helper import create_db, get_mysql_session, time_now
+from tables import create_tables, init_user
+from tables import Chunks
+from tables import Tasks
+from users import current_user, get_authenticator, is_admin, register_user
 from report import task_report
 from task_form import task_form
 from task_loads import find_request, load_all_chunks, load_all_requests, load_all_tasks
 import pandas as pd
 from sqlalchemy.orm.session import Session
 
-import logging
-
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler()
-    ]
-)
-
-logger = logging.getLogger(__name__)
+from logger import logger
 
 
 load_dotenv()
@@ -41,6 +32,7 @@ def create_task(session: Session):
         timeout=100000,
         threads=1,
         request_per_thread=1,
+        user_id=current_user(session).id
     )
 
     task_form(task, session, False)
@@ -243,19 +235,40 @@ if __name__ == "__main__":
 
     page_title()
 
-    authenticator = get_authenticator(session)
+    if not os.path.exists("init.lock"):
+        if st.button("Initialize Database", key="init_db"):
+            create_db()
+            create_tables()
+            init_user()
+            with open("init.lock", "w") as f:
+                f.write("ok")
 
-    if st.session_state["authentication_status"]:
-        st.write(f'Welcome `{st.session_state["name"]}`')
-        col1, col2 = st.columns([10, 2])
-        with col1:
-            authenticator.logout()
-        home_page(session)
-    elif st.session_state["authentication_status"] is False:
-        st.error("Username/password is incorrect")
-    elif st.session_state["authentication_status"] is None:
-        col1, col2 = st.columns(2)
-        with col1:
-            authenticator.login()
-        with col2:
-            register_user(session)
+    else:
+        authenticator = get_authenticator(session)
+
+        if st.session_state["authentication_status"]:
+            st.write(
+                f'Welcome `{st.session_state["name"]}`, `{st.session_state["email"]}`')
+            col1, col2 = st.columns([10, 2])
+            with col1:
+                authenticator.logout()
+
+            home_page(session)
+        else:
+            col1, col2 = st.columns(2)
+            with col1:
+
+                authenticator.login(
+                    fields={
+                        'Form name': 'Login',
+                        'Username': 'Alias',
+                        'Password': 'Password',
+                        'Login': 'Login',
+                    },
+                )
+
+                if st.session_state["authentication_status"] is False:
+                    st.error("Alias/Password is incorrect")
+
+            with col2:
+                register_user(session)

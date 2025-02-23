@@ -4,22 +4,14 @@ from typing import List
 from sqlalchemy import text
 from dotenv import load_dotenv
 
-import logging
 from sqlalchemy.orm.session import Session
-from tables.chunks import Chunks
-from tables.requests import Requests
-from tables.tasks import Tasks
+from tables import Chunks
+from tables import Requests
+from tables import Tasks
 
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler()
-    ]
-)
-
-logger = logging.getLogger(__name__)
+from logger import logger
+from users import current_user, is_admin
 
 load_dotenv()
 
@@ -68,13 +60,22 @@ def delete_task_data(session: Session, task: Tasks):
 
 
 def load_all_tasks(session: Session) -> List[Tasks]:
-    results = session.query(
+    admin = is_admin(session)
+
+    if admin:
+        return session.query(
+            Tasks
+        ).order_by(
+            Tasks.created_at.desc()
+        ).all()
+
+    return session.query(
         Tasks
     ).order_by(
         Tasks.created_at.desc()
+    ).filter(
+        Tasks.user_id == current_user(session).id
     ).all()
-
-    return results
 
 
 def load_all_requests(session: Session, task: Tasks, success: int) -> List[Requests]:

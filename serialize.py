@@ -1,22 +1,13 @@
 import json
 from redis import Redis
-import logging
-from tables.chunks import Chunks
-from tables.requests import Requests
 
+from tables import Chunks
+from tables import Requests
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler()
-    ]
-)
+from logger import logger
 
-logger = logging.getLogger(__name__)
-
-requests_queue_name = 'requests'
-chunks_queue_name = 'chunks'
+requests_queue_name = "requests"
+chunks_queue_name = "chunks"
 
 
 def to_dict(obj):
@@ -33,7 +24,7 @@ def serialize(task):
 
 
 def deserialize(task_json, instance) -> Requests | Chunks:
-    task_dict = json.loads(task_json.decode('utf-8'))
+    task_dict = json.loads(task_json.decode("utf-8"))
     for key, value in task_dict.items():
         setattr(instance, key, value)
     return instance

@@ -1,23 +1,12 @@
 from time import sleep
 from helper import get_mysql_session, redis_client
 
-
-import logging
-
 from sqlalchemy import update
 from serialize import chunk_dequeue, request_dequeue
-from tables.tasks import Tasks
+from tables import Tasks
 
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler()
-    ]
-)
-
-logger = logging.getLogger(__name__)
+from logger import logger
 
 if __name__ == "__main__":
 
@@ -59,5 +48,5 @@ if __name__ == "__main__":
                 )
 
         if not chunk and not request:
-            logger.info("sleep 1 seconds for sql...")
+            logger.info("waitting for sql ...")
             sleep(1)

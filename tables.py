@@ -135,6 +135,8 @@ class Requests(Base):
 
     @property
     def start_req_time_fmt(self):
+        if not self.start_req_time:
+            return "N/A"
         timestamp_sec = self.start_req_time / 1000
         dt_object = datetime.fromtimestamp(timestamp_sec)
         return dt_object.strftime('%Y-%m-%d %H:%M:%S')

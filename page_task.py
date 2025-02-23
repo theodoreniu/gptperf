@@ -8,7 +8,7 @@ from report import task_report
 from task_loads import load_all_requests
 import pandas as pd
 from sqlalchemy.orm.session import Session
-
+from logger import logger
 from users import current_user, is_admin
 
 
@@ -90,4 +90,5 @@ def render_requests(session: Session, task, status, title):
                         unsafe_allow_html=True
                     )
     except Exception as e:
+        logger.error(e)
         st.error(e)

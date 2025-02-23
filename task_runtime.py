@@ -44,7 +44,7 @@ class TaskRuntime:
 
     def latency(self):
 
-        task_request = Requests(
+        request = Requests(
             id=data_id(),
             task_id=self.task.id,
             thread_num=self.thread_num,
@@ -57,36 +57,36 @@ class TaskRuntime:
         )
 
         try:
-            task_request.input_token_count = self.num_tokens_from_messages(
+            request.input_token_count = self.num_tokens_from_messages(
                 self.task)
 
-            task_request.start_req_time = time_now()
+            request.start_req_time = time_now()
 
             if self.task.model_type == aoai:
-                task_request = deal_aoai(self, task_request)
+                request = deal_aoai(self, request)
             elif self.task.model_type == ds:
-                task_request = deal_ds(self, task_request)
+                request = deal_ds(self, request)
             elif self.task.model_type == ds_foundry:
-                task_request = deal_ds_foundry(self, task_request)
+                request = deal_ds_foundry(self, request)
             else:
                 raise Exception(
                     f"Model type {self.task.model_type} not supported")
 
-            task_request.end_req_time = time_now()
-            task_request.request_latency_ms = (
-                task_request.end_req_time - task_request.start_req_time)
+            request.end_req_time = time_now()
+            request.request_latency_ms = (
+                request.end_req_time - request.start_req_time)
 
-            if task_request.first_token_latency_ms:
-                task_request.last_token_latency_ms = so_far_ms(
+            if request.first_token_latency_ms:
+                request.last_token_latency_ms = so_far_ms(
                     self.last_token_time
                 )
 
-            task_request.success = 1
+            request.success = 1
 
         except Exception as e:
-            task_request.success = 0
-            task_request.response = f"{e}"
+            request.success = 0
+            request.response = f"{e}"
             logger.error(f'Error: {e}', exc_info=True)
 
-        task_request.completed_at = time_now()
-        request_enqueue(self.redis, task_request)
+        request.completed_at = time_now()
+        request_enqueue(self.redis, request)

@@ -1,7 +1,6 @@
 
 import streamlit as st
 from dotenv import load_dotenv
-from sqlalchemy.orm.session import Session
 from typing import List
 from helper import time_now
 from page_task_edit import task_form
@@ -15,24 +14,24 @@ from users import current_user
 load_dotenv()
 
 
-def home_page(session: Session):
+def home_page():
 
     task_id = st.query_params.get("task_id", None)
     if task_id:
-        return task_page(session, task_id)
+        return task_page(task_id)
 
     request_id = st.query_params.get("request_id", None)
     if request_id:
-        return request_page(session, request_id)
+        return request_page(request_id)
 
     st.markdown("-----------")
 
-    create_task(session)
+    create_task()
 
-    render_list(session)
+    render_list()
 
 
-def create_task(session: Session):
+def create_task():
     st.markdown("### Create Task")
 
     task = Tasks(
@@ -45,22 +44,22 @@ def create_task(session: Session):
         timeout=100000,
         threads=1,
         request_per_thread=1,
-        user_id=current_user(session).id,
+        user_id=current_user().id,
         deployment_type="",
     )
 
-    task_form(task, session, False)
+    task_form(task, False)
 
 
-def render_list(session: Session):
+def render_list():
 
-    tasks: List[Tasks] = load_all_tasks(session)
+    tasks: List[Tasks] = load_all_tasks()
     st.session_state.tasks = tasks
 
     st.markdown(f"### Tasks ({len(st.session_state.tasks)})")
 
     if st.button(f"Refresh", key="refresh", icon="🔄"):
-        st.session_state.tasks = load_all_tasks(session)
+        st.session_state.tasks = load_all_tasks()
 
     for task in st.session_state.tasks:
 

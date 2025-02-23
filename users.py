@@ -1,17 +1,15 @@
 
 
-from logger import logger
 from sqlalchemy.ext.declarative import declarative_base
 
-from helper import check_username, get_mysql_session, time_now
+from helper import check_username, time_now
 import streamlit_authenticator as stauth
-from typing import List
 from dotenv import load_dotenv
 from helper import time_now
 import streamlit as st
 
-from sqlalchemy.orm.session import Session
 from tables import Users
+from task_loads import add_user, find_user_by_username, load_all_users
 
 
 load_dotenv()
@@ -20,7 +18,7 @@ load_dotenv()
 Base = declarative_base()
 
 
-def register_user(session):
+def register_user():
     user = Users(
         role="user",
         created_at=time_now()
@@ -79,30 +77,14 @@ def register_user(session):
             st.error("username must be at most 20 characters")
             return
 
-        # username must be unique
-        if session.query(Users).filter(Users.username == user.username).first():
-            st.error("username already exists.")
-            return
-
         user.email = f"{user.username}@microsoft.com"
-        session.add(user)
-        session.commit()
+        add_user(user)
         st.success("Registed")
 
 
-def load_all_users(session) -> List[Users]:
-    results = session.query(
-        Users
-    ).order_by(
-        Users.created_at.desc()
-    ).all()
+def get_authenticator():
 
-    return results
-
-
-def get_authenticator(session: Session):
-
-    users = load_all_users(session)
+    users = load_all_users()
 
     credentials = {
         "usernames": {
@@ -130,11 +112,11 @@ def get_authenticator(session: Session):
     )
 
 
-def is_admin(session: Session) -> bool:
-    return current_user(session).role == "admin" if current_user(session) else False
+def is_admin() -> bool:
+    return current_user().role == "admin" if current_user() else False
 
 
-def current_user(session: Session) -> Users | None:
+def current_user() -> Users | None:
 
     if 'user' in st.session_state:
         return st.session_state['user']
@@ -144,10 +126,7 @@ def current_user(session: Session) -> Users | None:
         and st.session_state["authentication_status"]
     ):
 
-        st.session_state['user'] = session.query(
-            Users
-        ).filter(
-            Users.username == st.session_state["username"]
-        ).first()
+        st.session_state['user'] = find_user_by_username(
+            st.session_state["username"])
 
     return st.session_state['user'] if 'user' in st.session_state else None

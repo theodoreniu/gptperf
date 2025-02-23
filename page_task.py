@@ -1,13 +1,12 @@
 
 import streamlit as st
 from dotenv import load_dotenv
-from helper import time_now
+from helper import get_mysql_session, time_now
 from page_task_edit import task_form
 from tables import Tasks
 from report import task_report
 from task_loads import load_all_requests
 import pandas as pd
-from sqlalchemy.orm.session import Session
 from logger import logger
 from users import current_user, is_admin
 
@@ -15,11 +14,13 @@ from users import current_user, is_admin
 load_dotenv()
 
 
-def task_page(session: Session, task_id: int):
+def task_page(task_id: int):
 
     task = None
 
-    if is_admin(session):
+    session = get_mysql_session()
+
+    if is_admin():
         task = session.query(
             Tasks
         ).filter(
@@ -30,8 +31,10 @@ def task_page(session: Session, task_id: int):
             Tasks
         ).filter(
             Tasks.id == task_id,
-            Tasks.user_id == current_user(session).id
+            Tasks.user_id == current_user().id
         ).first()
+
+    session.close()
 
     if not task:
         st.error("task not found")
@@ -43,7 +46,7 @@ def task_page(session: Session, task_id: int):
     st.markdown(
         f"## {task.status_icon} {task.name} `{task.status_text}` `{task.progress_percentage}%`")
 
-    task_form(task, session, True)
+    task_form(task, True)
 
     if task.error_message:
         st.error(task.error_message)
@@ -64,16 +67,16 @@ def task_page(session: Session, task_id: int):
                 st.error(e)
 
         with st.spinner(text="Loading Failed Requests..."):
-            render_requests(session, task, 0, '❌ Failed Requests')
+            render_requests(task, 0, '❌ Failed Requests')
 
         with st.spinner(text="Loading Succeed Requests..."):
-            render_requests(session, task, 1, '✅ Succeed Requests')
+            render_requests(task, 1, '✅ Succeed Requests')
 
 
-def render_requests(session: Session, task, status, title):
+def render_requests(task, status, title):
     try:
         start_time = time_now()
-        requests = load_all_requests(session, task, status)
+        requests = load_all_requests(task, status)
         end_time = time_now()
         cost_time = round(end_time-start_time, 2)
         count = len(requests)

@@ -2,12 +2,12 @@ from dotenv import load_dotenv
 from helper import data_id, so_far_ms, time_now
 from serialize import chunk_enqueue
 from logger import logger
-from tables import Chunks
+from tables import Chunks, Requests
 
 load_dotenv()
 
 
-def deal_aoai(runtime, task_request: Chunks) -> Chunks:
+def deal_aoai(runtime, request: Requests) -> Requests:
     response = runtime.client.chat.completions.create(
         messages=runtime.task.query,
         model=runtime.task.model_id,
@@ -24,7 +24,7 @@ def deal_aoai(runtime, task_request: Chunks) -> Chunks:
             id=data_id(),
             task_id=runtime.task.id,
             thread_num=runtime.thread_num,
-            request_id=task_request.id,
+            request_id=request.id,
             token_len=0,
             characters_len=0,
             created_at=time_now(),
@@ -32,9 +32,9 @@ def deal_aoai(runtime, task_request: Chunks) -> Chunks:
             chunk_content=chunk.choices[0].delta.content,
         )
 
-        if not task_request.first_token_latency_ms:
-            task_request.first_token_latency_ms = so_far_ms(
-                task_request.start_req_time)
+        if not request.first_token_latency_ms:
+            request.first_token_latency_ms = so_far_ms(
+                request.start_req_time)
             task_chunk.last_token_latency_ms = 0
             runtime.last_token_time = time_now()
         else:
@@ -43,24 +43,24 @@ def deal_aoai(runtime, task_request: Chunks) -> Chunks:
             )
             runtime.last_token_time = time_now()
 
-        task_request.chunks_count += 1
+        request.chunks_count += 1
 
         if task_chunk.chunk_content:
             logger.info(task_chunk.chunk_content)
-            task_request.response += task_chunk.chunk_content
+            request.response += task_chunk.chunk_content
             task_chunk.token_len += len(
                 runtime.encoding.encode(task_chunk.chunk_content))
             task_chunk.characters_len += len(task_chunk.chunk_content)
 
-            task_request.output_token_count += len(
+            request.output_token_count += len(
                 runtime.encoding.encode(task_chunk.chunk_content))
 
         task_chunk.request_latency_ms = so_far_ms(
-            task_request.start_req_time
+            request.start_req_time
         )
 
-        task_chunk.chunk_index = task_request.chunks_count
+        task_chunk.chunk_index = request.chunks_count
 
         chunk_enqueue(runtime.redis, task_chunk)
 
-    return task_request
+    return request

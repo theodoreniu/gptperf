@@ -1,14 +1,14 @@
 
-from config import aoai, ds, ds_foundry, ds_models, aoai_models, deployment_types, model_types
+from config import aoai, ds, ds_foundry, ds_models, aoai_models, model_types
 import streamlit as st
 from dotenv import load_dotenv
 from tables import Tasks
-from sqlalchemy.orm.session import Session
-from task_loads import delete_task_data, queue_task
+from task_loads import add_task, delete_task, delete_task_data, queue_task, update_task
+
 load_dotenv()
 
 
-def task_form(task: Tasks, session: Session, edit: bool = False):
+def task_form(task: Tasks, edit: bool = False):
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -191,10 +191,9 @@ def task_form(task: Tasks, session: Session, edit: bool = False):
                         st.error("deployment_name is required.")
                         return
                 if edit:
-                    session.commit()
+                    update_task(task)
                 else:
-                    session.add(task)
-                    session.commit()
+                    add_task(task)
 
                 st.success("Succeed")
 
@@ -202,9 +201,8 @@ def task_form(task: Tasks, session: Session, edit: bool = False):
         delete_btn = st.button(
             label="🗑️ Delete", key=f"delete_task_{task.id}")
         if delete_btn:
-            delete_task_data(session, task)
-            session.delete(task)
-            session.commit()
+            delete_task_data(task)
+            delete_task(task)
             st.success("Deleted")
 
     run_title = "▶ Run"
@@ -217,7 +215,7 @@ def task_form(task: Tasks, session: Session, edit: bool = False):
             key=f"run_task_{task.id}"
         )
         if run_btn:
-            queue_task(session, task)
+            queue_task(task)
             st.success("Pendding")
 
     st.markdown("----------")

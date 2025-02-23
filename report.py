@@ -28,6 +28,7 @@ def report_number(session, sql_string: str, index: int):
             }
 
     except Exception as e:
+        logger.error(e)
         st.error(e)
 
     return {

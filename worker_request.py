@@ -27,10 +27,10 @@ if __name__ == "__main__":
 
             if len(tasks) == 0:
                 logger.info("waitting for request ...")
-                sleep(1)
+                sleep(3)
 
         except Exception as e:
             logger.error(f'Error: {e}', exc_info=True)
-            sleep(1)
+            sleep(3)
         finally:
             session.close()

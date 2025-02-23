@@ -1,6 +1,5 @@
 
 from tables import Tasks
-from task_loads import succeed_task
 from task_runtime import TaskRuntime
 from theodoretools.bot import feishu_text
 from concurrent.futures import ThreadPoolExecutor
@@ -64,5 +63,3 @@ def task_executor(session: Session, task: Tasks):
                 logger.info(future.result())
             except Exception as e:
                 logger.error(f'Threads Error: {e}', exc_info=True)
-
-        succeed_task(session, task)

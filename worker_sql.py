@@ -10,10 +10,10 @@ from logger import logger
 
 if __name__ == "__main__":
 
-    session = get_mysql_session()
-    redis_client = redis_client()
-
     while (True):
+        session = get_mysql_session()
+        redis_client = redis_client()
+
         chunk = chunk_dequeue(redis_client)
         if chunk:
             logger.info(chunk.__dict__)
@@ -47,6 +47,7 @@ if __name__ == "__main__":
                     )
                 )
 
+        session.close()
         if not chunk and not request:
             logger.info("waitting for sql ...")
             sleep(1)

@@ -3,7 +3,7 @@
 from logger import logger
 from sqlalchemy.ext.declarative import declarative_base
 
-from helper import check_username, time_now
+from helper import check_username, get_mysql_session, time_now
 import streamlit_authenticator as stauth
 from typing import List
 from dotenv import load_dotenv
@@ -99,7 +99,15 @@ def load_all_users(session) -> List[Users]:
 
 
 def get_authenticator(session: Session):
-    users = load_all_users(session)
+
+    users = session.query(
+        Users
+    ).order_by(
+        Users.created_at.desc()
+    ).all()
+
+    session.close()
+
     credentials = {
         "usernames": {
         }

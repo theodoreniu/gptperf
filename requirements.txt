@@ -2,10 +2,10 @@ python-dotenv~=1.0.1
 theodoretools==0.0.13
 pydantic~=2.10.6
 requests~=2.32.3
-openai==1.63.2
+openai==1.64.0
 httpx==0.28.1
 tiktoken==0.9.0
-streamlit==1.42.1
+streamlit==1.42.2
 streamlit-ace==0.1.1
 streamlit-authenticator==0.4.1
 sqlalchemy==2.0.38
@@ -14,3 +14,4 @@ deepseek==1.0.0
 hiredis==3.1.0
 pymysql==1.1.1
 redis==5.2.1
+cryptography==43.0.3

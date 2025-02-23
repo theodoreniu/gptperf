@@ -6,22 +6,13 @@ from config import aoai
 from ollama import Client
 
 from sqlalchemy.orm.session import Session
-import logging
 
-from tables.chunks import Chunks
-from tables.requests import Requests
-from tables.tasks import Tasks
+from tables import Chunks
+from tables import Requests
+from tables import Tasks
 
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler()
-    ]
-)
-
-logger = logging.getLogger(__name__)
+from logger import logger
 
 load_dotenv()
 

@@ -1,5 +1,5 @@
 
-from tables.tasks import Tasks
+from tables import Tasks
 from task_loads import succeed_task
 from task_runtime import TaskRuntime
 from theodoretools.bot import feishu_text
@@ -8,18 +8,7 @@ from config import aoai
 import tiktoken
 from openai import AzureOpenAI, OpenAI
 from sqlalchemy.orm.session import Session
-import logging
-
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler()
-    ]
-)
-
-logger = logging.getLogger(__name__)
+from logger import logger
 
 
 def safe_create_and_run_task(task: Tasks, thread_num: int,  encoding: tiktoken.Encoding, client, request_index: int):
@@ -70,9 +59,10 @@ def task_executor(session: Session, task: Tasks):
             for request_index in range(task.request_per_thread)
         ]
 
-    for future in futures:
-        try:
-            future.result()
-            succeed_task(session, task)
-        except Exception as e:
-            logger.error(f'Threads Error: {e}', exc_info=True)
+        for future in futures:
+            try:
+                logger.info(future.result())
+            except Exception as e:
+                logger.error(f'Threads Error: {e}', exc_info=True)
+
+        succeed_task(session, task)

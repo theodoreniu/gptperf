@@ -1,23 +1,12 @@
 
-from tables.chunks import Chunks
-from tables.requests import Requests
-from tables.tasks import Tasks
+from tables import Chunks
+from tables import Requests
+from tables import Tasks
 from task_loads import sql_query
 import numpy as np
 import streamlit as st
 
-import logging
-
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler()
-    ]
-)
-
-logger = logging.getLogger(__name__)
+from logger import logger
 
 
 def report_number(session, sql_string: str, index: int):

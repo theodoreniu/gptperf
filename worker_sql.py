@@ -42,17 +42,15 @@ if __name__ == "__main__":
             request = request_dequeue(redis)
             if request:
                 # logger.info(request.__dict__)
-                success = request.success == 1
-                task_id = request.task_id
 
                 add_request(request)
 
-                if success:
-                    task_request_succeed(task_id)
+                if request.success == 1:
+                    task_request_succeed(request.task_id)
                 else:
-                    task_request_failed(task_id)
+                    task_request_failed(request.task_id)
 
-                check_status(task_id)
+                check_status(request.task_id)
 
             if not chunk and not request:
                 logger.info("waitting for sql ...")

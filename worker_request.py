@@ -25,13 +25,12 @@ if __name__ == "__main__":
                     error_task(session, task, {e})
                     logger.error(f'Error: {e}', exc_info=True)
 
-            session.close()
-
             if len(tasks) == 0:
                 logger.info("waitting for request ...")
                 sleep(1)
 
         except Exception as e:
-            session.close()
             logger.error(f'Error: {e}', exc_info=True)
             sleep(1)
+        finally:
+            session.close()

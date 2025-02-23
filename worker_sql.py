@@ -48,16 +48,13 @@ if __name__ == "__main__":
                         )
                     )
 
-            session.close()
-            redis.close()
-
             if not chunk and not request:
                 logger.info("waitting for sql ...")
                 sleep(1)
 
         except Exception as e:
-            session.close()
-            redis.close()
-
             logger.error(f'Error: {e}', exc_info=True)
             sleep(1)
+        finally:
+            session.close()
+            redis.close()

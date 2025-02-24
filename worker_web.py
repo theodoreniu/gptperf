@@ -41,16 +41,20 @@ if __name__ == "__main__":
 
         col1, col2 = st.columns(2)
         with col1:
-            authenticator.login(
-                fields={
-                    'Form name': 'Login',
-                    'Username': 'Alias',
-                    'Password': 'Password',
-                    'Login': 'Login',
-                },
-            )
-            if st.session_state["authentication_status"] is False:
-                st.error("Alias/Password is incorrect")
+            try:
+                authenticator.login(
+                    fields={
+                        'Form name': 'Login',
+                        'Username': 'Alias',
+                        'Password': 'Password',
+                        'Login': 'Login',
+                    },
+                )
+                if st.session_state["authentication_status"] is False:
+                    st.error("Alias/Password is incorrect")
+            except Exception as e:
+                st.error(e)
+                authenticator.logout()
         with col2:
             if not st.session_state["authentication_status"]:
                 register_user()

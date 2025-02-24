@@ -7,7 +7,7 @@ from page_home import home_page
 from page_user import register_user
 from tables import create_tables, init_user
 from task_loads import get_authenticator
-
+from config import app_started_at, app_version
 
 load_dotenv()
 
@@ -62,7 +62,8 @@ if __name__ == "__main__":
 
         if st.session_state["authentication_status"]:
             st.write(
-                f'Welcome `{st.session_state["name"]}`, `{st.session_state["email"]}`')
+                f'Welcome `{st.session_state["name"]}`, `{st.session_state["email"]}`, [llmperf](https://github.com/theodoreniu/llmperf): `{app_version}` App started at: `{app_started_at}`')
+
             col1, col2 = st.columns([10, 2])
             with col1:
                 authenticator.logout()

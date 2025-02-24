@@ -1,3 +1,9 @@
+from datetime import datetime
+
+app_version = '0.0.1'
+
+app_started_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
 not_support_stream = [
     "o1-mini",
     # 以下 stream 为 true 不报错，只能拿到空字符串

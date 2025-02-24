@@ -12,10 +12,10 @@ if __name__ == "__main__":
             if task:
                 try:
                     logger.info(f"task {task.id} start...")
-                    run_task(task)
+                    run_task(task.id)
 
                     logger.info(f"delete old data ...")
-                    delete_task_data(task)
+                    delete_task_data(task.id)
 
                     logger.info(f"start request ...")
                     task_executor(task)

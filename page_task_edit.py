@@ -244,6 +244,6 @@ def task_form(task: Tasks, edit: bool = False):
                 use_container_width=True
             )
         if delete_btn:
-            delete_task_data(task)
+            delete_task_data(task.id)
             delete_task(task)
             st.success("Deleted")

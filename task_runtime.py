@@ -49,12 +49,15 @@ class TaskRuntime:
         )
 
     def run_with_timeout(self, method, timeout):
-
         event = threading.Event()
+        error = None
 
         def target():
+            nonlocal error
             try:
                 method()
+            except Exception as e:
+                error = e
             finally:
                 event.set()
 
@@ -64,12 +67,11 @@ class TaskRuntime:
         event.wait(timeout)
 
         if thread.is_alive():
-            logger.error(
-                f"Timeout occurred while executing {method.__name__}.")
             raise TimeoutError(
                 f"Timeout occurred while executing {method.__name__}.")
-        else:
-            logger.info(f"{method.__name__} completed within the timeout.")
+        elif error:
+            raise TimeoutError(
+                f"An error occurred in {method.__name__}: {error}")
 
     def num_tokens_from_messages(self):
         if self.task.model_type != aoai:

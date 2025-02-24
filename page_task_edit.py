@@ -208,7 +208,7 @@ def task_form(task: Tasks, edit: bool = False):
                 use_container_width=True,
             )
         if create_update_btn:
-            return create_update(task, edit)
+            create_update(task, edit)
 
         with col2:
             run_btn = st.button(

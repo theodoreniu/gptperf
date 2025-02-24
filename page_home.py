@@ -65,8 +65,11 @@ def render_list():
     ):
 
         for task in st.session_state.tasks:
+            desc = ""
+            if task.desc:
+                desc = f"| `{task.desc}`"
 
             st.markdown(
-                f'{task.status_icon} {task.name} `{task.model_id}` <a href="/?task_id={task.id}" target="_blank">⚙️ Manage</a>',
+                f'{task.status_icon} {task.name} `{task.model_id}` {desc} <a href="/?task_id={task.id}" target="_blank">⚙️ Manage</a>',
                 unsafe_allow_html=True
             )

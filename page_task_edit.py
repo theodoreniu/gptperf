@@ -18,7 +18,7 @@ def task_form(task: Tasks, edit: bool = False):
         )
     with col2:
         task.desc = st.text_input(
-            label="Description",
+            label="Description / Size",
             value=task.desc
         )
     with col3:

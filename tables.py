@@ -156,6 +156,22 @@ class Requests(Base):
         dt_object = datetime.fromtimestamp(timestamp_sec)
         return dt_object.strftime('%Y-%m-%d %H:%M:%S')
 
+    @property
+    def completed_at_fmt(self):
+        if not self.completed_at:
+            return "N/A"
+        timestamp_sec = self.completed_at / 1000
+        dt_object = datetime.fromtimestamp(timestamp_sec)
+        return dt_object.strftime('%Y-%m-%d %H:%M:%S')
+
+    @property
+    def created_at_fmt(self):
+        if not self.created_at:
+            return "N/A"
+        timestamp_sec = self.created_at / 1000
+        dt_object = datetime.fromtimestamp(timestamp_sec)
+        return dt_object.strftime('%Y-%m-%d %H:%M:%S')
+
 
 class Chunks(Base):
     __tablename__ = 'tasks_requests_chunks'

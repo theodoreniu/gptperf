@@ -4,7 +4,7 @@ import tiktoken
 from helper import data_id, redis_client, so_far_ms, time_now
 from serialize import request_enqueue
 from config import aoai, ds, ds_foundry, not_support_stream
-
+from azure.core.exceptions import HttpResponseError
 from tables import Tasks
 from logger import logger
 from openai import AzureOpenAI, OpenAI
@@ -92,7 +92,6 @@ class TaskRuntime:
                 )
 
             request.success = 1
-
         except Exception as e:
             request.success = 0
             request.response = f"{e}"
@@ -108,6 +107,7 @@ class TaskRuntime:
             headers={
                 'api-key': self.task.api_key if self.task.api_key else ''
             },
+            timeout=self.task.timeout / 1000,
         )
 
         stream = client.chat(
@@ -181,10 +181,13 @@ class TaskRuntime:
             max_tokens=self.task.content_length,
             model=self.task.model_id,
             temperature=self.task.temperature,
+            timeout=self.task.timeout / 1000,
         )
 
         for update in response:
+
             if update.choices:
+
                 task_chunk = Chunks(
                     id=data_id(),
                     task_id=self.task.id,
@@ -209,7 +212,9 @@ class TaskRuntime:
                     self.last_token_time = time_now()
 
                 if task_chunk.chunk_content:
+
                     logger.info(task_chunk.chunk_content)
+
                     request.response += task_chunk.chunk_content
                     task_chunk.token_len += len(
                         self.encoding.encode(task_chunk.chunk_content))
@@ -228,6 +233,8 @@ class TaskRuntime:
 
                 chunk_enqueue(self.redis, task_chunk)
 
+        client.close()
+
         return request
 
     def deal_aoai(self, request: Requests) -> Requests:
@@ -237,7 +244,7 @@ class TaskRuntime:
             azure_endpoint=self.task.azure_endpoint,
             azure_deployment=self.task.deployment_name,
             api_key=self.task.api_key,
-            timeout=self.task.timeout,
+            timeout=self.task.timeout / 1000,
         )
 
         response = None
@@ -324,5 +331,7 @@ class TaskRuntime:
                 task_chunk.chunk_index = request.chunks_count
 
                 chunk_enqueue(self.redis, task_chunk)
+
+        client.close()
 
         return request

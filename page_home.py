@@ -38,7 +38,7 @@ def create_task():
         created_at=time_now(),
         content_length=2048,
         temperature=0.8,
-        timeout=100000,
+        timeout=30000,
         threads=1,
         request_per_thread=1,
         user_id=current_user().id,

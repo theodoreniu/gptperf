@@ -74,11 +74,11 @@ def task_form(task: Tasks, edit: bool = False):
         )
     with col6:
         task.timeout = st.number_input(
-            label="timeout",
+            label="timeout (ms)",
             value=task.timeout,
             step=1,
-            min_value=100000,
-            max_value=1000000,
+            min_value=1000,
+            max_value=100000,
             help="!!"
         )
     col1, col2 = st.columns(2)

@@ -3,7 +3,7 @@ from config import aoai, ds, ds_foundry, ds_models, aoai_models, model_types
 import streamlit as st
 from dotenv import load_dotenv
 from serialize import chunk_len, request_len
-from tables import Tasks, create_task_tables, delete_table
+from tables import Tasks, create_task_tables, delete_table, truncate_table
 from task_loads import add_task, delete_task, queue_task, stop_task, update_task
 
 load_dotenv()
@@ -201,7 +201,7 @@ def task_form(task: Tasks, edit: bool = False):
             return create_update(task, edit)
 
     if edit:
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4, col5 = st.columns(5)
         with col1:
             create_update_btn = st.button(
                 label="🔄 Update",
@@ -224,6 +224,7 @@ def task_form(task: Tasks, edit: bool = False):
                 st.warning(
                     f"Other tasks({queue_len}) are still running, please wait...")
             else:
+                truncate_table(task.id)
                 queue_task(task)
                 st.success("Pendding for running...")
 
@@ -237,8 +238,18 @@ def task_form(task: Tasks, edit: bool = False):
         if stop_btn:
             stop_task(task)
             st.success("Stoped")
-
         with col4:
+            rebuild_btn = st.button(
+                label="🪛 Rebuild Data Table",
+                key=f"rebuild_task_{task.id}",
+                disabled=task.status == 1 or task.status == 2,
+                use_container_width=True
+            )
+        if rebuild_btn:
+            delete_table(task.id)
+            create_task_tables(task.id)
+            st.success("Rebuilted")
+        with col5:
             delete_btn = st.button(
                 label="🗑️ Delete",
                 key=f"delete_task_{task.id}",

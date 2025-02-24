@@ -141,7 +141,6 @@ def create_request_table_class(task_id: int):
     class Requests(Base):
         __tablename__ = table_name
         __table_args__ = (
-            Index('idx_user_id', 'user_id'),
             Index('idx_success', 'success'),
             {'extend_existing': True}
         )
@@ -212,7 +211,6 @@ def create_chunk_table_class(task_id: int):
     class Chunks(Base):
         __tablename__ = table_name
         __table_args__ = (
-            Index('idx_user_id', 'user_id'),
             Index('idx_request_id', 'request_id'),
             {'extend_existing': True}
         )
@@ -251,6 +249,23 @@ def create_task_tables(task_id: int):
         st.error(f"Table {Requests.__tablename__} create failed: {e}")
         logger.error(f"Table {Chunks.__tablename__} create failed: {e}")
         logger.error(f"Table {Requests.__tablename__} create failed: {e}")
+
+
+def truncate_table(task_id: int):
+    engine = create_engine(sql_string)
+
+    Chunks = create_chunk_table_class(task_id)
+    Requests = create_request_table_class(task_id)
+
+    try:
+        with engine.connect() as connection:
+            connection.execute(f"TRUNCATE TABLE {Chunks.__tablename__}")
+            connection.execute(f"TRUNCATE TABLE {Requests.__tablename__}")
+    except Exception as e:
+        st.error(f"Table {Chunks.__tablename__} truncation failed: {e}")
+        st.error(f"Table {Requests.__tablename__} truncation failed: {e}")
+        logger.error(f"Table {Chunks.__tablename__} truncation failed: {e}")
+        logger.error(f"Table {Requests.__tablename__} truncation failed: {e}")
 
 
 def delete_table(task_id: int):

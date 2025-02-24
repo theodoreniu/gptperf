@@ -84,7 +84,8 @@ def render_requests(task, status, title):
             st.markdown(f"## {title} ({count})")
 
             with st.container(
-                border=True, height=450
+                border=True,
+                height=450 if len(requests) > 10 else None
             ):
                 for request in requests:
                     st.markdown(

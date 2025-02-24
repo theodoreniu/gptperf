@@ -23,7 +23,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.worker
-    command: python worker_request.py
+    command: python observer_request.py
     volumes:
       - ./:/app
     working_dir: /app
@@ -36,7 +36,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.worker
-    command: python worker_sql.py
+    command: python observer_sql.py
     volumes:
       - ./:/app
     working_dir: /app

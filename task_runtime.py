@@ -70,7 +70,7 @@ class TaskRuntime:
             raise TimeoutError(
                 f"Timeout occurred while executing {method.__name__}.")
         elif error:
-            raise TimeoutError(
+            raise Exception(
                 f"An error occurred in {method.__name__}: {error}")
 
     def num_tokens_from_messages(self):

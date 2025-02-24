@@ -212,9 +212,9 @@ def task_form(task: Tasks, edit: bool = False):
 
         with col2:
             run_btn = st.button(
-                label="🚀 Rerun" if task.status == 2 else "🚀 Run",
+                label="🚀 Run",
                 key=f"run_task_{task.id}",
-                disabled=task.status == 1,
+                disabled=task.status in [1, 2],
                 use_container_width=True
             )
         if run_btn:

@@ -248,13 +248,13 @@ def add_task(task: Tasks):
         session.close()
 
 
-def run_task(task: Tasks):
+def run_task(task_id: int):
     session = get_mysql_session()
     try:
         task = session.query(
             Tasks
         ).filter(
-            Tasks.id == task.id
+            Tasks.id == task_id
         ).first()
         task.status = 2
         task.error_message = ""
@@ -361,10 +361,10 @@ def succeed_task(task: Tasks):
         session.close()
 
 
-def delete_task_data(task: Tasks):
+def delete_task_data(task_id: int):
     sql_commit(
-        f'delete from {Requests.__tablename__} where task_id = {task.id}')
-    sql_commit(f'delete from {Chunks.__tablename__} where task_id = {task.id}')
+        f'delete from {Requests.__tablename__} where task_id = {task_id}')
+    sql_commit(f'delete from {Chunks.__tablename__} where task_id = {task_id}')
 
 
 def load_all_tasks() -> List[Tasks]:

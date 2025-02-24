@@ -46,7 +46,7 @@ def task_page(task_id: int):
     st.markdown(
         f"## {task.status_icon} {task.name} `{task.status_text}` {progress_percentage}")
 
-    if task.status > 1:
+    if task.status > 1 and task.progress_percentage > 0:
         st.progress(task.progress_percentage)
 
     if task.error_message:

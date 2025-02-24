@@ -1,19 +1,12 @@
 from time import sleep
-from helper import get_mysql_session, redis_client
+from helper import redis_client
 from serialize import chunk_dequeue, request_dequeue
-from tables import Tasks
 from logger import logger
-from task_loads import add_chunk, add_request, error_task, succeed_task, task_request_failed, task_request_succeed
+from task_loads import add_chunk, add_request, error_task, find_task, succeed_task, task_request_failed, task_request_succeed
 
 
 def check_status(task_id: int):
-    session = get_mysql_session()
-    task = session.query(
-        Tasks
-    ).filter(
-        Tasks.id == task_id
-    ).first()
-    session.close()
+    task = find_task(task_id)
 
     target_requests = task.request_per_thread * task.threads
     total_requested = task.request_succeed + task.request_failed

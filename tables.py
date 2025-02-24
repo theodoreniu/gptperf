@@ -11,6 +11,8 @@ import streamlit as st
 
 Base = declarative_base()
 
+defined_tables = set()
+
 
 class Users(Base):
     __tablename__ = 'users'
@@ -122,76 +124,123 @@ class Tasks(Base):
         return 'N/A'
 
 
-class Requests(Base):
-    __tablename__ = 'tasks_requests'
-    id = Column(String(48), primary_key=True)
-    task_id = Column(Integer)
-    user_id = Column(Integer)
-    thread_num = Column(Integer)
-    input_token_count = Column(Integer, default=0)
-    output_token_count = Column(Integer, default=0)
-    response = Column(Text)
-    chunks_count = Column(Integer, default=0)
-    first_token_latency_ms = Column(Integer)
-    last_token_latency_ms = Column(Integer)
-    request_index = Column(Integer)
-    request_latency_ms = Column(Integer)
-    success = Column(Integer)
-    end_req_time = Column(BigInteger, nullable=True)
-    start_req_time = Column(BigInteger, nullable=True)
-    created_at = Column(BigInteger, nullable=False,
-                        default=lambda: int(time_now()))
-    completed_at = Column(BigInteger, nullable=True,
-                          default=lambda: int(time_now()))
+def create_request_table_class(task_id: int):
+    table_name = f'reuqests_{task_id}'
 
-    @property
-    def start_req_time_fmt(self):
-        if not self.start_req_time:
-            return "N/A"
-        timestamp_sec = self.start_req_time / 1000
-        dt_object = datetime.fromtimestamp(timestamp_sec)
-        return dt_object.strftime('%Y-%m-%d %H:%M:%S')
+    class Requests(Base):
+        __tablename__ = table_name
+        __table_args__ = {'extend_existing': True}
+        id = Column(String(48), primary_key=True)
+        task_id = Column(Integer)
+        user_id = Column(Integer)
+        thread_num = Column(Integer)
+        input_token_count = Column(Integer, default=0)
+        output_token_count = Column(Integer, default=0)
+        response = Column(Text)
+        chunks_count = Column(Integer, default=0)
+        first_token_latency_ms = Column(Integer)
+        last_token_latency_ms = Column(Integer)
+        request_index = Column(Integer)
+        request_latency_ms = Column(Integer)
+        success = Column(Integer)
+        end_req_time = Column(BigInteger, nullable=True)
+        start_req_time = Column(BigInteger, nullable=True)
+        created_at = Column(BigInteger, nullable=False,
+                            default=lambda: int(time_now()))
+        completed_at = Column(BigInteger, nullable=True,
+                              default=lambda: int(time_now()))
 
-    @property
-    def end_req_time_fmt(self):
-        if not self.end_req_time:
-            return "N/A"
-        timestamp_sec = self.end_req_time / 1000
-        dt_object = datetime.fromtimestamp(timestamp_sec)
-        return dt_object.strftime('%Y-%m-%d %H:%M:%S')
+        @property
+        def start_req_time_fmt(self):
+            if not self.start_req_time:
+                return "N/A"
+            timestamp_sec = self.start_req_time / 1000
+            dt_object = datetime.fromtimestamp(timestamp_sec)
+            return dt_object.strftime('%Y-%m-%d %H:%M:%S')
 
-    @property
-    def completed_at_fmt(self):
-        if not self.completed_at:
-            return "N/A"
-        timestamp_sec = self.completed_at / 1000
-        dt_object = datetime.fromtimestamp(timestamp_sec)
-        return dt_object.strftime('%Y-%m-%d %H:%M:%S')
+        @property
+        def end_req_time_fmt(self):
+            if not self.end_req_time:
+                return "N/A"
+            timestamp_sec = self.end_req_time / 1000
+            dt_object = datetime.fromtimestamp(timestamp_sec)
+            return dt_object.strftime('%Y-%m-%d %H:%M:%S')
 
-    @property
-    def created_at_fmt(self):
-        if not self.created_at:
-            return "N/A"
-        timestamp_sec = self.created_at / 1000
-        dt_object = datetime.fromtimestamp(timestamp_sec)
-        return dt_object.strftime('%Y-%m-%d %H:%M:%S')
+        @property
+        def completed_at_fmt(self):
+            if not self.completed_at:
+                return "N/A"
+            timestamp_sec = self.completed_at / 1000
+            dt_object = datetime.fromtimestamp(timestamp_sec)
+            return dt_object.strftime('%Y-%m-%d %H:%M:%S')
+
+        @property
+        def created_at_fmt(self):
+            if not self.created_at:
+                return "N/A"
+            timestamp_sec = self.created_at / 1000
+            dt_object = datetime.fromtimestamp(timestamp_sec)
+            return dt_object.strftime('%Y-%m-%d %H:%M:%S')
+
+    return Requests
 
 
-class Chunks(Base):
-    __tablename__ = 'tasks_requests_chunks'
-    id = Column(String(48), primary_key=True)
-    task_id = Column(Integer)
-    thread_num = Column(Integer)
-    request_id = Column(String(1024))
-    chunk_index = Column(Integer)
-    user_id = Column(Integer)
-    chunk_content = Column(String(1024))
-    token_len = Column(Integer)
-    characters_len = Column(Integer)
-    request_latency_ms = Column(Integer)
-    last_token_latency_ms = Column(Integer)
-    created_at = Column(BigInteger, nullable=False,
-                        default=lambda: int(time_now()))
+def create_chunk_table_class(task_id: int):
+    table_name = f'chunks_{task_id}'
+
+    class Chunks(Base):
+        __tablename__ = table_name
+        __table_args__ = {'extend_existing': True}
+        id = Column(String(48), primary_key=True)
+        task_id = Column(Integer)
+        thread_num = Column(Integer)
+        request_id = Column(String(1024))
+        chunk_index = Column(Integer)
+        user_id = Column(Integer)
+        chunk_content = Column(String(1024))
+        token_len = Column(Integer)
+        characters_len = Column(Integer)
+        request_latency_ms = Column(Integer)
+        last_token_latency_ms = Column(Integer)
+        created_at = Column(BigInteger, nullable=False,
+                            default=lambda: int(time_now()))
+
+    return Chunks
+
+
+def create_task_tables(task_id: int):
+    engine = create_engine(sql_string)
+
+    Chunks = create_chunk_table_class(task_id)
+    Requests = create_request_table_class(task_id)
+
+    try:
+        Base.metadata.create_all(engine)
+        st.success(f"Table {Chunks.__tablename__} created")
+        st.success(f"Table {Requests.__tablename__} created")
+    except Exception as e:
+        st.error(f"Table {Chunks.__tablename__} create failed: {e}")
+        st.error(f"Table {Requests.__tablename__} create failed: {e}")
+        logger.error(f"Table {Chunks.__tablename__} create failed: {e}")
+        logger.error(f"Table {Requests.__tablename__} create failed: {e}")
+
+
+def delete_table(task_id: int):
+    engine = create_engine(sql_string)
+
+    Chunks = create_chunk_table_class(task_id)
+    Requests = create_request_table_class(task_id)
+
+    try:
+        Chunks.__table__.drop(engine)
+        Requests.__table__.drop(engine)
+        st.success(f"Table {Chunks.__tablename__} deleted")
+        st.success(f"Table {Requests.__tablename__} deleted")
+    except Exception as e:
+        st.error(f"Table {Chunks.__tablename__} deletion failed: {e}")
+        st.error(f"Table {Requests.__tablename__} deletion failed: {e}")
+        logger.error(f"Table {Chunks.__tablename__} deletion failed: {e}")
+        logger.error(f"Table {Requests.__tablename__} deletion failed: {e}")
 
 
 def create_tables():
@@ -202,6 +251,7 @@ def create_tables():
         st.success("Tables created")
     except Exception as e:
         st.error(f"Tables create failed: {e}")
+        logger.error(f"Tables create failed: {e}")
 
 
 def init_user():

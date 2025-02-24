@@ -1,7 +1,7 @@
 
 import streamlit as st
 from dotenv import load_dotenv
-from helper import get_mysql_session, redis_client, time_now
+from helper import get_mysql_session
 from page_task_edit import task_form
 from serialize import chunk_len
 from tables import Tasks
@@ -82,7 +82,7 @@ def task_page(task_id: int):
 
 def render_requests(task, status, title):
     try:
-        requests = load_all_requests(task, status)
+        requests = load_all_requests(task.id, status)
 
         count = len(requests)
         if count > 0:
@@ -94,7 +94,7 @@ def render_requests(task, status, title):
             ):
                 for request in requests:
                     st.markdown(
-                        f'`{request.start_req_time_fmt}` {request.id} `{request.request_index}/{request.thread_num}` <a href="/?request_id={request.id}" target="_blank">Log</a>',
+                        f'`{request.start_req_time_fmt}` {request.id} `{request.request_index}/{request.thread_num}` <a href="/?request_id={request.id}&task_id={task.id}" target="_blank">Log</a>',
                         unsafe_allow_html=True
                     )
     except Exception as e:

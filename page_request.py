@@ -1,19 +1,20 @@
 
 import streamlit as st
 from dotenv import load_dotenv
-from helper import get_mysql_session, time_now
-from tables import Chunks, Requests
+from helper import get_mysql_session
+from tables import create_request_table_class
 from task_loads import current_user, is_admin, load_all_chunks
 
 
 load_dotenv()
 
 
-def request_page(request_id: str):
+def request_page(task_id: int, request_id: str):
 
     request = None
 
     session = get_mysql_session()
+    Requests = create_request_table_class(task_id)
 
     if is_admin():
         request = session.query(
@@ -92,12 +93,12 @@ def request_page(request_id: str):
             label_visibility="hidden"
         )
 
-    render_chunks(request, '🚀 Chunks')
+    render_chunks(task_id, request_id, '🚀 Chunks')
 
 
-def render_chunks(request: Chunks,  title):
+def render_chunks(task_id: int, request_id: str,  title):
     try:
-        chunks = load_all_chunks(request)
+        chunks = load_all_chunks(task_id, request_id)
 
         list = []
 

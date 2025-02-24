@@ -3,8 +3,8 @@ from config import aoai, ds, ds_foundry, ds_models, aoai_models, model_types
 import streamlit as st
 from dotenv import load_dotenv
 from serialize import chunk_len, request_len
-from tables import Tasks
-from task_loads import add_task, delete_task, delete_task_data, queue_task, stop_task, update_task
+from tables import Tasks, create_task_tables, delete_table
+from task_loads import add_task, delete_task, queue_task, stop_task, update_task
 
 load_dotenv()
 
@@ -189,7 +189,8 @@ def task_form(task: Tasks, edit: bool = False):
                 update_task(task)
                 st.success("Updated Succeed")
             else:
-                add_task(task)
+                task_id = add_task(task)
+                create_task_tables(task_id)
                 st.success("Created Succeed")
     if not edit:
         create_update_btn = st.button(
@@ -245,6 +246,6 @@ def task_form(task: Tasks, edit: bool = False):
                 use_container_width=True
             )
         if delete_btn:
-            delete_task_data(task.id)
+            delete_table(task.id)
             delete_task(task)
             st.success("Deleted")

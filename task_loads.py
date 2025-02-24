@@ -5,8 +5,7 @@ from sqlalchemy import text
 from dotenv import load_dotenv
 import streamlit_authenticator as stauth
 from helper import get_mysql_session
-from tables import Chunks, Users
-from tables import Requests
+from tables import Users, create_chunk_table_class, create_request_table_class
 from tables import Tasks
 from sqlalchemy import update
 import streamlit as st
@@ -160,7 +159,7 @@ def update_task(task_update: Tasks):
         session.close()
 
 
-def add_request(request: Requests):
+def add_request(request):
     session = get_mysql_session()
     try:
         new_request = copy.deepcopy(request)
@@ -173,7 +172,7 @@ def add_request(request: Requests):
         session.close()
 
 
-def add_chunk(chunk: Chunks):
+def add_chunk(chunk):
     session = get_mysql_session()
     try:
         new_chunk = copy.deepcopy(chunk)
@@ -242,6 +241,8 @@ def add_task(task: Tasks):
         new_task = copy.deepcopy(task)
         session.add(new_task)
         session.commit()
+        task_id = new_task.id
+        return task_id
     except Exception as e:
         session.rollback()
         logger.error(f"Error: {e}")
@@ -363,12 +364,6 @@ def succeed_task(task: Tasks):
         session.close()
 
 
-def delete_task_data(task_id: int):
-    sql_commit(
-        f'delete from {Requests.__tablename__} where task_id = {task_id}')
-    sql_commit(f'delete from {Chunks.__tablename__} where task_id = {task_id}')
-
-
 def load_all_tasks() -> List[Tasks]:
     session = get_mysql_session()
 
@@ -394,13 +389,13 @@ def load_all_tasks() -> List[Tasks]:
     return tasks
 
 
-def load_all_requests(task: Tasks, success: int) -> List[Requests]:
+def load_all_requests(task_id: int, success: int):
+    Requests = create_request_table_class(task_id)
     session = get_mysql_session()
 
     requests = session.query(
         Requests
     ).filter(
-        Requests.task_id == task.id,
         Requests.success == success
     ).order_by(
         Requests.created_at.desc()
@@ -413,13 +408,14 @@ def load_all_requests(task: Tasks, success: int) -> List[Requests]:
     return requests
 
 
-def load_all_chunks(request: Chunks) -> List[Chunks]:
+def load_all_chunks(task_id: int, request_id: str):
     session = get_mysql_session()
+    Chunks = create_chunk_table_class(task_id)
 
     results = session.query(
         Chunks
     ).filter(
-        Chunks.request_id == request.id,
+        Chunks.request_id == request_id,
     ).order_by(
         Chunks.created_at.asc()
     ).limit(
@@ -449,7 +445,8 @@ def task_dequeue() -> Tasks | None:
     return task
 
 
-def find_request(request_id: str) -> Requests | None:
+def find_request(task_id: int, request_id: str):
+    Requests = create_request_table_class(task_id)
     session = get_mysql_session()
 
     request = session.query(

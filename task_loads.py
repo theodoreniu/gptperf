@@ -99,6 +99,7 @@ def queue_task(task: Tasks):
             Tasks.id == task.id
         ).first()
         task.status = 1
+        task.error_message = ""
         session.commit()
     except Exception as e:
         session.rollback()

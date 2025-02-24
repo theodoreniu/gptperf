@@ -200,8 +200,6 @@ def add_user(user: Users):
 
 def find_user_by_username(username: str):
 
-    logger.info(f"Finding user by username: {username}")
-
     session = get_mysql_session()
 
     try:

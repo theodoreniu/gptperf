@@ -112,7 +112,7 @@ class Tasks(Base):
         if self.status == 2:
             return 'Running'
         if self.status == 3:
-            return 'Error'
+            return 'Failed'
         if self.status == 4:
             return 'Completed'
         return 'NA'

@@ -4,3 +4,5 @@ primaryColor="#00ADEF"
 
 [server]
 maxUploadSize = 800
+runOnSave = true
+disconnectedSessionTTL = 360

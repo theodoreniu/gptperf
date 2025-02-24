@@ -35,6 +35,18 @@ class TaskRuntime:
         self.request_index = request_index
         self.redis = redis
         self.stream = False if self.task.model_id in not_support_stream else True
+        Requests = create_request_table_class(self.task.id)
+        self.request = Requests(
+            id=data_id(),
+            task_id=self.task.id,
+            thread_num=self.thread_num,
+            response="",
+            chunks_count=0,
+            created_at=time_now(),
+            output_token_count=0,
+            request_index=self.request_index,
+            user_id=self.task.user_id,
+        )
 
     def num_tokens_from_messages(self):
         if self.task.model_type != aoai:
@@ -53,20 +65,6 @@ class TaskRuntime:
 
     def latency(self):
 
-        Requests = create_request_table_class(self.task.id)
-
-        request = Requests(
-            id=data_id(),
-            task_id=self.task.id,
-            thread_num=self.thread_num,
-            response="",
-            chunks_count=0,
-            created_at=time_now(),
-            output_token_count=0,
-            request_index=self.request_index,
-            user_id=self.task.user_id,
-        )
-
         try:
             task = find_task(self.task.id)
             if not task:
@@ -75,39 +73,39 @@ class TaskRuntime:
             if task.status == 5:
                 raise Exception("Task stoped")
 
-            request.input_token_count = self.num_tokens_from_messages()
+            self.request.input_token_count = self.num_tokens_from_messages()
 
-            request.start_req_time = time_now()
+            self.request.start_req_time = time_now()
 
             if self.task.model_type == aoai:
-                request = self.deal_aoai(request)
+                self.deal_aoai()
             elif self.task.model_type == ds:
-                request = self.deal_ds(request)
+                self.deal_ds()
             elif self.task.model_type == ds_foundry:
-                request = self.deal_ds_foundry(request)
+                self.deal_ds_foundry()
             else:
                 raise Exception(
                     f"Model type {self.task.model_type} not supported")
 
-            request.end_req_time = time_now()
-            request.request_latency_ms = (
-                request.end_req_time - request.start_req_time)
+            self.request.end_req_time = time_now()
+            self.request.request_latency_ms = (
+                self.request.end_req_time - self.request.start_req_time)
 
-            if request.first_token_latency_ms:
-                request.last_token_latency_ms = so_far_ms(
+            if self.request.first_token_latency_ms:
+                self.request.last_token_latency_ms = so_far_ms(
                     self.last_token_time
                 )
 
-            request.success = 1
+            self.request.success = 1
         except Exception as e:
-            request.success = 0
-            request.response = f"{e}"
+            self.request.success = 0
+            self.request.response = f"{e}"
             logger.error(f'Error: {e}', exc_info=True)
         finally:
-            request.completed_at = time_now()
-            request_enqueue(self.redis, request)
+            self.request.completed_at = time_now()
+            request_enqueue(self.redis, self.request)
 
-    def deal_ds(self, request):
+    def deal_ds(self):
 
         client = Client(
             host=self.task.azure_endpoint,
@@ -133,7 +131,7 @@ class TaskRuntime:
                 id=data_id(),
                 task_id=self.task.id,
                 thread_num=self.thread_num,
-                request_id=request.id,
+                request_id=self.request.id,
                 token_len=0,
                 characters_len=0,
                 created_at=time_now(),
@@ -141,9 +139,9 @@ class TaskRuntime:
                 chunk_content=chunk['message']['content'],
             )
 
-            if not request.first_token_latency_ms:
-                request.first_token_latency_ms = so_far_ms(
-                    request.start_req_time)
+            if not self.request.first_token_latency_ms:
+                self.request.first_token_latency_ms = so_far_ms(
+                    self.request.start_req_time)
                 task_chunk.last_token_latency_ms = 0
                 self.last_token_time = time_now()
             else:
@@ -154,27 +152,25 @@ class TaskRuntime:
 
             if task_chunk.chunk_content:
                 logger.info(task_chunk.chunk_content)
-                request.response += task_chunk.chunk_content
+                self.request.response += task_chunk.chunk_content
                 task_chunk.token_len += len(
                     self.encoding.encode(task_chunk.chunk_content))
                 task_chunk.characters_len += len(task_chunk.chunk_content)
 
-                request.output_token_count += len(
+                self.request.output_token_count += len(
                     self.encoding.encode(task_chunk.chunk_content))
 
-            request.chunks_count += 1
+            self.request.chunks_count += 1
 
             task_chunk.request_latency_ms = so_far_ms(
-                request.start_req_time
+                self.request.start_req_time
             )
 
-            task_chunk.chunk_index = request.chunks_count
+            task_chunk.chunk_index = self.request.chunks_count
 
             chunk_enqueue(self.redis, task_chunk)
 
-        return request
-
-    def deal_ds_foundry(self, request):
+    def deal_ds_foundry(self):
 
         client = ChatCompletionsClient(
             endpoint=self.task.azure_endpoint,
@@ -207,7 +203,7 @@ class TaskRuntime:
                     id=data_id(),
                     task_id=self.task.id,
                     thread_num=self.thread_num,
-                    request_id=request.id,
+                    request_id=self.request.id,
                     token_len=0,
                     characters_len=0,
                     created_at=time_now(),
@@ -215,9 +211,9 @@ class TaskRuntime:
                     chunk_content=update.choices[0].delta.content,
                 )
 
-                if not request.first_token_latency_ms:
-                    request.first_token_latency_ms = so_far_ms(
-                        request.start_req_time)
+                if not self.request.first_token_latency_ms:
+                    self.request.first_token_latency_ms = so_far_ms(
+                        self.request.start_req_time)
                     task_chunk.last_token_latency_ms = 0
                     self.last_token_time = time_now()
                 else:
@@ -230,29 +226,27 @@ class TaskRuntime:
 
                     logger.info(task_chunk.chunk_content)
 
-                    request.response += task_chunk.chunk_content
+                    self.request.response += task_chunk.chunk_content
                     task_chunk.token_len += len(
                         self.encoding.encode(task_chunk.chunk_content))
                     task_chunk.characters_len += len(task_chunk.chunk_content)
 
-                    request.output_token_count += len(
+                    self.request.output_token_count += len(
                         self.encoding.encode(task_chunk.chunk_content))
 
-                request.chunks_count += 1
+                self.request.chunks_count += 1
 
                 task_chunk.request_latency_ms = so_far_ms(
-                    request.start_req_time
+                    self.request.start_req_time
                 )
 
-                task_chunk.chunk_index = request.chunks_count
+                task_chunk.chunk_index = self.request.chunks_count
 
                 chunk_enqueue(self.redis, task_chunk)
 
         client.close()
 
-        return request
-
-    def deal_aoai(self, request):
+    def deal_aoai(self):
 
         client = AzureOpenAI(
             api_version=self.task.api_version,
@@ -283,20 +277,20 @@ class TaskRuntime:
             )
 
         if not self.stream:
-            request.response = response.choices[0].message.content
+            self.request.response = response.choices[0].message.content
 
-            request.first_token_latency_ms = so_far_ms(
-                request.start_req_time
+            self.request.first_token_latency_ms = so_far_ms(
+                self.request.start_req_time
             )
 
-            request.request_latency_ms = so_far_ms(
-                request.start_req_time
+            self.request.request_latency_ms = so_far_ms(
+                self.request.start_req_time
             )
 
-            request.chunks_count = 1
+            self.request.chunks_count = 1
 
-            request.output_token_count += len(
-                self.encoding.encode(request.response)
+            self.request.output_token_count += len(
+                self.encoding.encode(self.request.response)
             )
 
         if self.stream:
@@ -310,7 +304,7 @@ class TaskRuntime:
                     id=data_id(),
                     task_id=self.task.id,
                     thread_num=self.thread_num,
-                    request_id=request.id,
+                    request_id=self.request.id,
                     token_len=0,
                     characters_len=0,
                     created_at=time_now(),
@@ -318,9 +312,9 @@ class TaskRuntime:
                     chunk_content=chunk.choices[0].delta.content,
                 )
 
-                if not request.first_token_latency_ms:
-                    request.first_token_latency_ms = so_far_ms(
-                        request.start_req_time)
+                if not self.request.first_token_latency_ms:
+                    self.request.first_token_latency_ms = so_far_ms(
+                        self.request.start_req_time)
                     task_chunk.last_token_latency_ms = 0
                     self.last_token_time = time_now()
                 else:
@@ -329,26 +323,24 @@ class TaskRuntime:
                     )
                     self.last_token_time = time_now()
 
-                request.chunks_count += 1
+                self.request.chunks_count += 1
 
                 if task_chunk.chunk_content:
                     logger.info(task_chunk.chunk_content)
-                    request.response += task_chunk.chunk_content
+                    self.request.response += task_chunk.chunk_content
                     task_chunk.token_len += len(
                         self.encoding.encode(task_chunk.chunk_content))
                     task_chunk.characters_len += len(task_chunk.chunk_content)
 
-                    request.output_token_count += len(
+                    self.request.output_token_count += len(
                         self.encoding.encode(task_chunk.chunk_content))
 
                 task_chunk.request_latency_ms = so_far_ms(
-                    request.start_req_time
+                    self.request.start_req_time
                 )
 
-                task_chunk.chunk_index = request.chunks_count
+                task_chunk.chunk_index = self.request.chunks_count
 
                 chunk_enqueue(self.redis, task_chunk)
 
         client.close()
-
-        return request

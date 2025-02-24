@@ -4,7 +4,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from logger import logger
 
-TARGET_SCRIPT = 'worker_sql.py'
+TARGET_SCRIPT = 'worker_queue.py'
 
 process = None
 

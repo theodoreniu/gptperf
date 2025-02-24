@@ -1,7 +1,7 @@
 version: "3.8"
 
 services:
-  worker_web:
+  web:
     build:
       context: .
       dockerfile: Dockerfile.web
@@ -19,7 +19,7 @@ services:
     networks:
       - app-network
 
-  worker_request:
+  request:
     build:
       context: .
       dockerfile: Dockerfile.worker
@@ -32,11 +32,11 @@ services:
     networks:
       - app-network
 
-  worker_sql:
+  queue:
     build:
       context: .
       dockerfile: Dockerfile.worker
-    command: python observer_sql.py
+    command: python observer_queue.py
     volumes:
       - ./:/app
     working_dir: /app

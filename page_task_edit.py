@@ -229,7 +229,7 @@ def task_form(task: Tasks, edit: bool = False):
             stop_btn = st.button(
                 label="⛔ Stop",
                 key=f"stop_task_{task.id}",
-                disabled=task.status != 2,
+                disabled=task.status in [0, 3, 4, 5],
                 use_container_width=True
             )
         if stop_btn:

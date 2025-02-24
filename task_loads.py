@@ -137,6 +137,7 @@ def update_task(task_update: Tasks):
         ).first()
 
         task.name = task_update.name
+        task.desc = task_update.desc
         task.model_type = task_update.model_type
         task.model_id = task_update.model_id
         task.azure_endpoint = task_update.azure_endpoint

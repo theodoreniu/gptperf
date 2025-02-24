@@ -19,17 +19,18 @@ def task_form(task: Tasks, edit: bool = False):
     with col2:
         task.desc = st.text_input(
             label="Description / Size",
-            value=task.desc
+            value=task.desc,
+            max_chars=200
         )
     with col3:
         task.api_key = st.text_input(
-            label="api_key",
+            label="API Key",
             value=task.api_key,
             type="password"
         )
     with col4:
         task.feishu_token = st.text_input(
-            label="feishu_token",
+            label="Feishu Token",
             value=task.feishu_token,
             help="Will send message to feishu if set when task status changed"
         )
@@ -37,7 +38,7 @@ def task_form(task: Tasks, edit: bool = False):
     col1, col2, col3, col4, col5, col6 = st.columns(6)
     with col1:
         task.threads = st.number_input(
-            label="threads",
+            label="Threads",
             value=task.threads,
             step=1,
             min_value=1,
@@ -45,7 +46,7 @@ def task_form(task: Tasks, edit: bool = False):
         )
     with col2:
         task.request_per_thread = st.number_input(
-            label="request_per_thread",
+            label="Request Per Thread",
             value=task.request_per_thread,
             step=1,
             min_value=1,
@@ -53,7 +54,7 @@ def task_form(task: Tasks, edit: bool = False):
         )
     with col3:
         st.number_input(
-            label="request_total",
+            label="Request Total",
             disabled=True,
             value=task.threads * task.request_per_thread
         )
@@ -72,84 +73,80 @@ def task_form(task: Tasks, edit: bool = False):
         )
     with col6:
         task.timeout = st.number_input(
-            label="timeout (ms)",
+            label="Timeout (ms)",
             value=task.timeout,
             step=1,
             min_value=1000,
             max_value=100000,
-            help="!!"
         )
     col1, col2 = st.columns(2)
     with col1:
         task.system_prompt = st.text_area(
-            label="system_prompt",
+            label="System Prompt",
             value=task.system_prompt,
-            help="!!",
             height=200
         )
     with col2:
         task.user_prompt = st.text_area(
-            label="user_prompt",
+            label="User Prompt",
             value=task.user_prompt,
-            help="!!",
             height=200
         )
 
     col1, col2, col3, col4, col5 = st.columns([1, 2, 1, 1, 1])
     with col1:
         task.model_type = st.selectbox(
-            label='💡 model_type',
+            label='💡 Model Type',
             options=model_types,
             index=model_types.index(task.model_type) if task.model_type else 0
         )
     with col2:
         if task.model_type == aoai:
             task.azure_endpoint = st.text_input(
-                label="azure_endpoint",
+                label="Azure Endpoint",
                 value=task.azure_endpoint,
                 placeholder="https://xxx.openai.azure.com"
             )
         if task.model_type == ds:
             task.azure_endpoint = st.text_input(
-                label="endpoint",
+                label="Endpoint",
                 value=task.azure_endpoint,
             )
         if task.model_type == ds_foundry:
             task.azure_endpoint = st.text_input(
-                label="endpoint",
+                label="Endpoint",
                 value=task.azure_endpoint,
                 placeholder="https://xxxxx.services.ai.azure.com/models"
             )
     with col3:
         if task.model_type == aoai:
             task.model_id = st.selectbox(
-                label='model_id',
+                label='Model ID',
                 options=aoai_models,
                 index=aoai_models.index(
                     task.model_id) if task.model_id and task.model_id in aoai_models else 0
             )
         if task.model_type == ds:
             task.model_id = st.selectbox(
-                label='model_id',
+                label='Model ID',
                 options=ds_models,
                 index=ds_models.index(
                     task.model_id) if task.model_id and task.model_id in ds_models else 0
             )
         if task.model_type == ds_foundry:
             task.model_id = st.text_input(
-                label="model_id",
+                label="Model ID",
                 value=task.model_id,
             )
     with col4:
         if task.model_type == aoai:
             task.deployment_name = st.text_input(
-                label="deployment_name",
+                label="Deployment Name",
                 value=task.deployment_name,
-                help="!!"
             )
         if task.model_type == ds:
             task.enable_think = st.selectbox(
-                label="enable_think",
+                label="Enable Think",
                 options=[True, False],
                 index=[True, False].index(
                     task.enable_think) if task.enable_think else 1
@@ -157,7 +154,7 @@ def task_form(task: Tasks, edit: bool = False):
     with col5:
         if task.model_type == aoai:
             task.api_version = st.text_input(
-                label="api_version",
+                label="API Version",
                 value=task.api_version,
                 placeholder="2024-08-01-preview"
             )

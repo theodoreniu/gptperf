@@ -50,6 +50,5 @@ if __name__ == "__main__":
 
         except Exception as e:
             logger.error(f'Error: {e}', exc_info=True)
-            sleep(1)
         finally:
             redis.close()

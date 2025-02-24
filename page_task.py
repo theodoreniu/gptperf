@@ -46,7 +46,7 @@ def task_page(task_id: int):
         st.progress(task.progress_percentage)
 
     if task.error_message:
-        st.error(f"⚠ {task.error_message}")
+        st.error(f"📣 {task.error_message}")
 
     with st.container(
         border=True

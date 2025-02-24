@@ -185,6 +185,10 @@ def task_form(task: Tasks, edit: bool = False):
                 if not task.deployment_name:
                     st.error("deployment_name is required.")
                     return
+            if task.model_type == aoai or task.model_type == ds_foundry:
+                if not task.api_key:
+                    st.error("api_key is required.")
+                    return
             if edit:
                 update_task(task)
                 st.success("Updated Succeed")

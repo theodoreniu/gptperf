@@ -39,28 +39,27 @@ def task_page(task_id: int):
         st.error("task not found")
         return
 
-    if task.status > 1:
-        st.progress(task.progress_percentage)
-
     st.markdown(
         f"## {task.status_icon} {task.name} `{task.status_text}` `{task.progress_percentage}%`")
 
-    if task.error_message:
-        st.error(task.error_message)
+    if task.status > 1:
+        st.progress(task.progress_percentage)
 
-    task_form(task, True)
+    if task.error_message:
+        st.error(f"⚠ {task.error_message}")
+
+    with st.container(
+        border=True
+    ):
+        task_form(task, True)
 
     if task.status > 1:
 
         with st.spinner(text="Loading Report..."):
             try:
-                start_time = time_now()
                 data = task_report(task)
-                end_time = time_now()
-                cost_time = round(end_time-start_time, 2)
                 df = pd.DataFrame.from_dict(data, orient='index')
                 st.markdown("## 📊 Report")
-                st.text(f"Query {cost_time} ms")
                 st.table(df)
             except Exception as e:
                 st.error(e)
@@ -74,21 +73,18 @@ def task_page(task_id: int):
 
 def render_requests(task, status, title):
     try:
-        start_time = time_now()
         requests = load_all_requests(task, status)
-        end_time = time_now()
-        cost_time = round(end_time-start_time, 2)
+
         count = len(requests)
         if count > 0:
             st.markdown(f"## {title} ({count})")
-            st.text(f"Query {cost_time} ms")
 
             with st.container(
-                border=True, height=400
+                border=True, height=450
             ):
                 for request in requests:
                     st.markdown(
-                        f'`{request.start_req_time_fmt}` {request.id} `{request.request_index}/{request.thread_num}` <a href="/?request_id={request.id}" target="_blank">Logs</a>',
+                        f'`{request.start_req_time_fmt}` {request.id} `{request.request_index}/{request.thread_num}` <a href="/?request_id={request.id}" target="_blank">Log</a>',
                         unsafe_allow_html=True
                     )
     except Exception as e:

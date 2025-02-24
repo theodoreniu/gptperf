@@ -23,15 +23,13 @@ def home_page():
     if request_id:
         return request_page(request_id)
 
-    st.markdown("-----------")
-
     create_task()
 
     render_list()
 
 
 def create_task():
-    st.markdown("### Create Task")
+    st.markdown("## 📗 Create Task")
 
     task = Tasks(
         status=0,
@@ -47,22 +45,28 @@ def create_task():
         deployment_type="",
     )
 
-    task_form(task, False)
+    with st.container(
+        border=True
+    ):
+        task_form(task, False)
 
 
 def render_list():
-
     tasks: List[Tasks] = load_all_tasks()
     st.session_state.tasks = tasks
 
-    st.markdown(f"### Tasks ({len(st.session_state.tasks)})")
+    st.markdown(f"## 📁 Tasks ({len(st.session_state.tasks)})")
 
     if st.button(f"Refresh", key="refresh", icon="🔄"):
         st.session_state.tasks = load_all_tasks()
 
-    for task in st.session_state.tasks:
+    with st.container(
+        border=True
+    ):
 
-        st.markdown(
-            f'{task.status_icon} {task.name} `{task.model_id}` <a href="/?task_id={task.id}" target="_blank">⚙️ Manage</a>',
-            unsafe_allow_html=True
-        )
+        for task in st.session_state.tasks:
+
+            st.markdown(
+                f'{task.status_icon} {task.name} `{task.model_id}` <a href="/?task_id={task.id}" target="_blank">⚙️ Manage</a>',
+                unsafe_allow_html=True
+            )

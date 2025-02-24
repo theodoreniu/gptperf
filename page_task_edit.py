@@ -78,7 +78,7 @@ def task_form(task: Tasks, edit: bool = False):
             value=task.timeout,
             step=1,
             min_value=1000,
-            max_value=100000,
+            max_value=60*60*1000,
         )
     col1, col2 = st.columns(2)
     with col1:

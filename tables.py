@@ -101,6 +101,8 @@ class Tasks(Base):
             return '🔴'
         if self.status == 4:
             return '🟢'
+        if self.status == 5:
+            return '⛔'
         return '🟤'
 
     @property
@@ -115,7 +117,9 @@ class Tasks(Base):
             return 'Failed'
         if self.status == 4:
             return 'Completed'
-        return 'NA'
+        if self.status == 5:
+            return 'Stoped'
+        return 'N/A'
 
 
 class Requests(Base):

@@ -269,6 +269,23 @@ def error_task(task: Tasks, message: str):
         session.close()
 
 
+def stop_task(task: Tasks):
+    session = get_mysql_session()
+    try:
+        task = session.query(
+            Tasks
+        ).filter(
+            Tasks.id == task.id
+        ).first()
+        task.status = 5
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error: {e}")
+    finally:
+        session.close()
+
+
 def task_request_succeed(task_id: int):
     session = get_mysql_session()
     try:

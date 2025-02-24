@@ -3,7 +3,7 @@ from config import aoai, ds, ds_foundry, ds_models, aoai_models, model_types
 import streamlit as st
 from dotenv import load_dotenv
 from tables import Tasks
-from task_loads import add_task, delete_task, delete_task_data, queue_task, update_task
+from task_loads import add_task, delete_task, delete_task_data, queue_task, stop_task, update_task
 
 load_dotenv()
 
@@ -204,7 +204,7 @@ def task_form(task: Tasks, edit: bool = False):
             return create_update(task, edit)
 
     if edit:
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
             create_update_btn = st.button(
                 label="🔄 Update",
@@ -226,6 +226,17 @@ def task_form(task: Tasks, edit: bool = False):
             st.success("Pendding")
 
         with col3:
+            stop_btn = st.button(
+                label="⛔ Stop",
+                key=f"stop_task_{task.id}",
+                disabled=task.status != 2,
+                use_container_width=True
+            )
+        if stop_btn:
+            stop_task(task)
+            st.success("Stoped")
+
+        with col4:
             delete_btn = st.button(
                 label="🗑️ Delete",
                 key=f"delete_task_{task.id}",

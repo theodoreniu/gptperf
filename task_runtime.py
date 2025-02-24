@@ -15,6 +15,7 @@ from azure.ai.inference.models import SystemMessage, UserMessage
 from serialize import chunk_enqueue
 from ollama import Client
 from tables import Chunks, Requests
+from task_loads import find_task
 
 
 load_dotenv()
@@ -66,6 +67,10 @@ class TaskRuntime:
         )
 
         try:
+            task = find_task(self.task.id)
+            if task.status == 5:
+                raise Exception("Task stoped")
+
             request.input_token_count = self.num_tokens_from_messages(
                 self.task
             )

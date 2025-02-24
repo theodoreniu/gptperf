@@ -198,8 +198,25 @@ def add_user(user: Users):
         session.close()
 
 
-def find_user_by_username(username: str):
+def find_task(task_id: int):
+    session = get_mysql_session()
 
+    try:
+        return session.query(
+            Tasks
+        ).filter(
+            Tasks.id == task_id
+        ).first()
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error: {e}")
+        st.error(f"Error: {e}")
+        return None
+    finally:
+        session.close()
+
+
+def find_user_by_username(username: str):
     session = get_mysql_session()
 
     try:

@@ -68,6 +68,9 @@ class TaskRuntime:
 
         try:
             task = find_task(self.task.id)
+            if not task:
+                raise Exception("Task not found or was deleted")
+
             if task.status == 5:
                 raise Exception("Task stoped")
 

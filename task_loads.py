@@ -148,6 +148,8 @@ def update_task(task_update: Tasks):
         task.threads = task_update.threads
         task.feishu_token = task_update.feishu_token
         task.enable_think = task_update.enable_think
+        task.system_prompt = task_update.system_prompt
+        task.user_prompt = task_update.user_prompt
 
         session.commit()
     except Exception as e:

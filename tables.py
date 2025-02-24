@@ -1,7 +1,7 @@
 
 
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, Boolean, BigInteger, Float, Text
+from sqlalchemy import Column, Integer, String, Boolean, BigInteger, Float, Text, Index
 from datetime import datetime
 from helper import get_mysql_session, time_now
 from logger import logger
@@ -10,8 +10,6 @@ from helper import sql_string
 import streamlit as st
 
 Base = declarative_base()
-
-defined_tables = set()
 
 
 class Users(Base):
@@ -23,13 +21,19 @@ class Users(Base):
     password = Column(String(30))
     role = Column(String(20))
     enable_user = Column(Boolean)
-    created_at = Column(BigInteger, nullable=False,
-                        default=lambda: int(time_now()))
+    created_at = Column(
+        BigInteger,
+        nullable=False,
+        default=lambda: int(time_now())
+    )
 
 
 class Tasks(Base):
     __tablename__ = 'tasks'
     id = Column(Integer, primary_key=True, autoincrement=True)
+    __table_args__ = (
+        Index('idx_user_id', 'user_id'),
+    )
     name = Column(String(1024))
     desc = Column(String(1024))
     model_type = Column(String(1024))
@@ -55,10 +59,17 @@ class Tasks(Base):
     enable_think = Column(Boolean)
     request_succeed = Column(Integer, default=0)
     request_failed = Column(Integer, default=0)
-    created_at = Column(BigInteger, nullable=False,
-                        default=lambda: int(time_now()))
-    updated_at = Column(BigInteger, nullable=False, default=lambda: int(
-        time_now()), onupdate=lambda: int(time_now()))
+    created_at = Column(
+        BigInteger,
+        nullable=False,
+        default=lambda: int(time_now())
+    )
+    updated_at = Column(
+        BigInteger,
+        nullable=False,
+        default=lambda: int(time_now()),
+        onupdate=lambda: int(time_now())
+    )
 
     def get_created_at_datetime(self):
         return datetime.fromtimestamp(self.created_at / 1000)
@@ -129,7 +140,11 @@ def create_request_table_class(task_id: int):
 
     class Requests(Base):
         __tablename__ = table_name
-        __table_args__ = {'extend_existing': True}
+        __table_args__ = (
+            Index('idx_user_id', 'user_id'),
+            Index('idx_success', 'success'),
+            {'extend_existing': True}
+        )
         id = Column(String(48), primary_key=True)
         task_id = Column(Integer)
         user_id = Column(Integer)
@@ -145,10 +160,16 @@ def create_request_table_class(task_id: int):
         success = Column(Integer)
         end_req_time = Column(BigInteger, nullable=True)
         start_req_time = Column(BigInteger, nullable=True)
-        created_at = Column(BigInteger, nullable=False,
-                            default=lambda: int(time_now()))
-        completed_at = Column(BigInteger, nullable=True,
-                              default=lambda: int(time_now()))
+        created_at = Column(
+            BigInteger,
+            nullable=False,
+            default=lambda: int(time_now())
+        )
+        completed_at = Column(
+            BigInteger,
+            nullable=True,
+            default=lambda: int(time_now())
+        )
 
         @property
         def start_req_time_fmt(self):
@@ -190,20 +211,27 @@ def create_chunk_table_class(task_id: int):
 
     class Chunks(Base):
         __tablename__ = table_name
-        __table_args__ = {'extend_existing': True}
+        __table_args__ = (
+            Index('idx_user_id', 'user_id'),
+            Index('idx_request_id', 'request_id'),
+            {'extend_existing': True}
+        )
         id = Column(String(48), primary_key=True)
         task_id = Column(Integer)
-        thread_num = Column(Integer)
         request_id = Column(String(1024))
-        chunk_index = Column(Integer)
         user_id = Column(Integer)
+        chunk_index = Column(Integer)
+        thread_num = Column(Integer)
         chunk_content = Column(String(1024))
         token_len = Column(Integer)
         characters_len = Column(Integer)
         request_latency_ms = Column(Integer)
         last_token_latency_ms = Column(Integer)
-        created_at = Column(BigInteger, nullable=False,
-                            default=lambda: int(time_now()))
+        created_at = Column(
+            BigInteger,
+            nullable=False,
+            default=lambda: int(time_now())
+        )
 
     return Chunks
 

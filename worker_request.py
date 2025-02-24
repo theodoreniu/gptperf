@@ -25,9 +25,9 @@ if __name__ == "__main__":
                     error_task(task, {e})
                     logger.error(f'Error: {e}', exc_info=True)
             else:
-                logger.info("waitting for request ...")
-                sleep(3)
+                # logger.info("waitting for request ...")
+                sleep(2)
 
         except Exception as e:
             logger.error(f'Error: {e}', exc_info=True)
-            sleep(3)
+            sleep(2)

@@ -53,11 +53,11 @@ if __name__ == "__main__":
                 check_status(request.task_id)
 
             if not chunk and not request:
-                logger.info("waitting for sql ...")
-                sleep(3)
+                # logger.info("waitting for sql ...")
+                sleep(2)
 
         except Exception as e:
             logger.error(f'Error: {e}', exc_info=True)
-            sleep(30)
+            sleep(2)
         finally:
             redis.close()

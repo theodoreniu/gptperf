@@ -16,12 +16,13 @@ load_dotenv()
 def home_page():
 
     task_id = st.query_params.get("task_id", None)
+    request_id = st.query_params.get("request_id", None)
+
+    if task_id and request_id:
+        return request_page(task_id, request_id)
+
     if task_id:
         return task_page(task_id)
-
-    request_id = st.query_params.get("request_id", None)
-    if request_id:
-        return request_page(request_id)
 
     create_task()
 

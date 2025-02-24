@@ -44,7 +44,7 @@ def check_username(s):
     return bool(re.match(pattern, s))
 
 
-def redis_client():
+def redis_client() -> redis.Redis:
 
     host = os.getenv("REDIS_HOST", 'localhost')
     port = os.getenv("REDIS_PORT", 6379)

@@ -1,4 +1,5 @@
 
+from helper import redis_client
 from tables import Tasks
 from task_runtime import TaskRuntime
 from theodoretools.bot import feishu_text
@@ -8,12 +9,19 @@ import tiktoken
 from logger import logger
 
 
-def safe_create_and_run_task(task: Tasks, thread_num: int,  encoding: tiktoken.Encoding,  request_index: int):
+def safe_create_and_run_task(
+    task: Tasks,
+    thread_num: int,
+    encoding: tiktoken.Encoding,
+    request_index: int,
+    redis
+):
     task_runtime = TaskRuntime(
         task=task,
         thread_num=thread_num,
         encoding=encoding,
-        request_index=request_index
+        request_index=request_index,
+        redis=redis
     )
     task_runtime.latency()
 
@@ -34,16 +42,30 @@ def task_executor(task: Tasks):
         # todo: change to ds
         encoding = tiktoken.encoding_for_model('gpt-4o')
 
-    with ThreadPoolExecutor(max_workers=task.threads) as executor:
-        futures = [
-            executor.submit(safe_create_and_run_task, task,
-                            thread_index + 1, encoding, request_index+1)
-            for thread_index in range(task.threads)
-            for request_index in range(task.request_per_thread)
-        ]
+    redis = redis_client()
 
-        for future in futures:
-            try:
-                logger.info(future.result())
-            except Exception as e:
-                logger.error(f'Threads Error: {e}', exc_info=True)
+    try:
+        with ThreadPoolExecutor(max_workers=task.threads) as executor:
+            futures = [
+                executor.submit(
+                    safe_create_and_run_task,
+                    task,
+                    thread_index + 1,
+                    encoding,
+                    request_index+1,
+                    redis
+                )
+                for thread_index in range(task.threads)
+                for request_index in range(task.request_per_thread)
+            ]
+
+            for future in futures:
+                try:
+                    logger.info(future.result())
+                except Exception as e:
+                    logger.error(f'Threads Error: {e}', exc_info=True)
+
+    except Exception as e:
+        logger.error(f'Task Error: {e}', exc_info=True)
+    finally:
+        redis.close()

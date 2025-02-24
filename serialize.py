@@ -2,8 +2,8 @@ import json
 from redis import Redis
 
 from helper import redis_client
-from tables import Chunks
-from tables import Requests
+from tables import create_chunk_table_class, create_request_table_class
+
 
 from logger import logger
 
@@ -24,22 +24,23 @@ def serialize(task):
     return json.dumps(dict)
 
 
-def deserialize(task_json, instance) -> Requests | Chunks:
-    task_dict = json.loads(task_json.decode("utf-8"))
+def deserialize(task_dict, instance):
     for key, value in task_dict.items():
         setattr(instance, key, value)
     return instance
 
 
-def request_enqueue(redis_client: Redis, task: Requests):
+def request_enqueue(redis_client: Redis, task):
     task_json = serialize(task)
     redis_client.rpush(requests_queue_name, task_json)
 
 
-def request_dequeue(redis_client: Redis) -> Requests | None:
+def request_dequeue(redis_client: Redis):
     task_json = redis_client.lpop(requests_queue_name)
     if task_json:
-        task = deserialize(task_json, Requests())
+        task_dict = json.loads(task_json.decode("utf-8"))
+        Requests = create_request_table_class(task_dict["task_id"])
+        task = deserialize(task_dict, Requests())
         return task
     return None
 
@@ -49,15 +50,17 @@ def request_len() -> int:
     return redis.llen(requests_queue_name)
 
 
-def chunk_enqueue(redis_client: Redis, task: Chunks):
+def chunk_enqueue(redis_client: Redis, task):
     task_json = serialize(task)
     redis_client.rpush(chunks_queue_name, task_json)
 
 
-def chunk_dequeue(redis_client: Redis) -> Chunks | None:
+def chunk_dequeue(redis_client: Redis):
     task_json = redis_client.lpop(chunks_queue_name)
     if task_json:
-        task = deserialize(task_json, Chunks())
+        task_dict = json.loads(task_json.decode("utf-8"))
+        Chunks = create_chunk_table_class(task_dict["task_id"])
+        task = deserialize(task_dict, Chunks())
         return task
     return None
 

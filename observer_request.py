@@ -12,7 +12,8 @@ process = None
 class MyHandler(FileSystemEventHandler):
     def on_modified(self, event):
         global process
-        if event.src_path.endswith(TARGET_SCRIPT):
+
+        if event.src_path.endswith('.py'):
             logger.info(f"{TARGET_SCRIPT} updated, restarting...")
 
             if process and process.poll() is None:

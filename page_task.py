@@ -3,6 +3,7 @@ import streamlit as st
 from dotenv import load_dotenv
 from helper import get_mysql_session, redis_client, time_now
 from page_task_edit import task_form
+from serialize import chunk_len
 from tables import Tasks
 from report import task_report
 from task_loads import current_user, is_admin, load_all_requests
@@ -63,11 +64,11 @@ def task_page(task_id: int):
             try:
                 data = task_report(task)
                 df = pd.DataFrame.from_dict(data, orient='index')
-                redis = redis_client()
-                queue_len = redis.llen('chunks')
+                queue_len = chunk_len()
                 st.markdown("## 📊 Report")
                 if queue_len > 0:
-                    st.markdown(f"`{queue_len}` chunks in queue, please wait them to finish and refresh report.")
+                    st.markdown(
+                        f"`{queue_len}` chunks in queue, please wait them to finish and refresh report.")
                 st.table(df)
             except Exception as e:
                 st.error(e)

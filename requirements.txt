@@ -16,3 +16,4 @@ pymysql==1.1.1
 redis==5.2.1
 cryptography==43.0.3
 azure-ai-inference==1.0.0b9
+watchdog==5.0.3

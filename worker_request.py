@@ -1,8 +1,6 @@
 from time import sleep
-from tables import Tasks
 from task_executor import task_executor
 from task_loads import delete_task_data, error_task,  run_task, task_dequeue
-from typing import List
 from logger import logger
 
 if __name__ == "__main__":
@@ -26,8 +24,8 @@ if __name__ == "__main__":
                     logger.error(f'Error: {e}', exc_info=True)
             else:
                 # logger.info("waitting for request ...")
-                sleep(2)
+                sleep(1)
 
         except Exception as e:
             logger.error(f'Error: {e}', exc_info=True)
-            sleep(2)
+            sleep(1)

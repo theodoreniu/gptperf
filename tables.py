@@ -6,8 +6,11 @@ from datetime import datetime
 from helper import get_mysql_session, time_now
 from logger import logger
 from sqlalchemy import create_engine
-from helper import sql_string
+from helper import sql_string, db_string
 import streamlit as st
+from sqlalchemy import text
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 Base = declarative_base()
 
@@ -82,13 +85,25 @@ class Tasks(Base):
 
         if self.model_id == "o1-mini":
             return [
-                {"role": "assistant", "content": self.system_prompt},
-                {"role": "user", "content": self.user_prompt},
+                {
+                    "role": "assistant",
+                    "content": self.system_prompt if self.system_prompt else ""
+                },
+                {
+                    "role": "user",
+                    "content": self.user_prompt if self.user_prompt else ""
+                },
             ]
 
         return [
-            {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": self.user_prompt},
+            {
+                "role": "system",
+                "content": self.system_prompt if self.system_prompt else ""
+            },
+            {
+                "role": "user",
+                "content": self.user_prompt if self.user_prompt else ""
+            },
         ]
 
     @property
@@ -141,7 +156,7 @@ def create_request_table_class(task_id: int):
     class Requests(Base):
         __tablename__ = table_name
         __table_args__ = (
-            Index('idx_success', 'success'),
+            # Index('idxdd_success', 'success'),
             {'extend_existing': True}
         )
         id = Column(String(48), primary_key=True)
@@ -211,12 +226,12 @@ def create_chunk_table_class(task_id: int):
     class Chunks(Base):
         __tablename__ = table_name
         __table_args__ = (
-            Index('idx_request_id', 'request_id'),
+            # Index('chunk_request_id', 'request_id'),
             {'extend_existing': True}
         )
         id = Column(String(48), primary_key=True)
         task_id = Column(Integer)
-        request_id = Column(String(1024))
+        request_id = Column(String(48))
         user_id = Column(Integer)
         chunk_index = Column(Integer)
         thread_num = Column(Integer)
@@ -234,7 +249,7 @@ def create_chunk_table_class(task_id: int):
     return Chunks
 
 
-def create_task_tables(task_id: int):
+def create_task_tables(task_id: int) -> bool:
     engine = create_engine(sql_string)
 
     Chunks = create_chunk_table_class(task_id)
@@ -244,31 +259,38 @@ def create_task_tables(task_id: int):
         Base.metadata.create_all(engine)
         st.success(f"Table {Chunks.__tablename__} created")
         st.success(f"Table {Requests.__tablename__} created")
+        return True
     except Exception as e:
         st.error(f"Table {Chunks.__tablename__} create failed: {e}")
         st.error(f"Table {Requests.__tablename__} create failed: {e}")
         logger.error(f"Table {Chunks.__tablename__} create failed: {e}")
         logger.error(f"Table {Requests.__tablename__} create failed: {e}")
+        return False
 
 
-def truncate_table(task_id: int):
+def truncate_table(task_id: int) -> bool:
     engine = create_engine(sql_string)
+    Session = sessionmaker(bind=engine)
+    session = Session()
 
     Chunks = create_chunk_table_class(task_id)
     Requests = create_request_table_class(task_id)
 
     try:
-        with engine.connect() as connection:
-            connection.execute(f"TRUNCATE TABLE {Chunks.__tablename__}")
-            connection.execute(f"TRUNCATE TABLE {Requests.__tablename__}")
+        session.execute(text(
+            f"TRUNCATE TABLE {Chunks.__tablename__};"))
+        session.execute(text(
+            f"TRUNCATE TABLE {Requests.__tablename__};"))
+        return True
     except Exception as e:
-        st.error(f"Table {Chunks.__tablename__} truncation failed: {e}")
-        st.error(f"Table {Requests.__tablename__} truncation failed: {e}")
-        logger.error(f"Table {Chunks.__tablename__} truncation failed: {e}")
-        logger.error(f"Table {Requests.__tablename__} truncation failed: {e}")
+        st.error(f"DB create failed: {e}")
+        logger.error(f"DB create failed: {e}")
+        return False
+    finally:
+        session.close()
 
 
-def delete_table(task_id: int):
+def delete_task_tables(task_id: int) -> bool:
     engine = create_engine(sql_string)
 
     Chunks = create_chunk_table_class(task_id)
@@ -279,11 +301,13 @@ def delete_table(task_id: int):
         Requests.__table__.drop(engine)
         st.success(f"Table {Chunks.__tablename__} deleted")
         st.success(f"Table {Requests.__tablename__} deleted")
+        return True
     except Exception as e:
         st.error(f"Table {Chunks.__tablename__} deletion failed: {e}")
         st.error(f"Table {Requests.__tablename__} deletion failed: {e}")
         logger.error(f"Table {Chunks.__tablename__} deletion failed: {e}")
         logger.error(f"Table {Requests.__tablename__} deletion failed: {e}")
+        return False
 
 
 def create_tables():

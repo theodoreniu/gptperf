@@ -3,7 +3,7 @@ from config import aoai, ds, ds_foundry, ds_models, aoai_models, model_types
 import streamlit as st
 from dotenv import load_dotenv
 from serialize import chunk_len, request_len
-from tables import Tasks, create_task_tables, delete_table, truncate_table
+from tables import Tasks, create_task_tables, delete_task_tables, truncate_table
 from task_loads import add_task, delete_task, queue_task, stop_task, update_task
 
 load_dotenv()
@@ -224,9 +224,9 @@ def task_form(task: Tasks, edit: bool = False):
                 st.warning(
                     f"Other tasks({queue_len}) are still running, please wait...")
             else:
-                truncate_table(task.id)
-                queue_task(task)
-                st.success("Pendding for running...")
+                if truncate_table(task.id):
+                    queue_task(task)
+                    st.success("Pendding for running...")
 
         with col3:
             stop_btn = st.button(
@@ -246,9 +246,9 @@ def task_form(task: Tasks, edit: bool = False):
                 use_container_width=True
             )
         if rebuild_btn:
-            delete_table(task.id)
-            create_task_tables(task.id)
-            st.success("Rebuilted")
+            delete_task_tables(task.id)
+            if create_task_tables(task.id):
+                st.success("Rebuilted")
         with col5:
             delete_btn = st.button(
                 label="🗑️ Delete",
@@ -257,6 +257,6 @@ def task_form(task: Tasks, edit: bool = False):
                 use_container_width=True
             )
         if delete_btn:
-            delete_table(task.id)
+            delete_task_tables(task.id)
             delete_task(task)
             st.success("Deleted")

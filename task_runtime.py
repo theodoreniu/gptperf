@@ -10,7 +10,6 @@ from openai import AzureOpenAI
 from azure.ai.inference import ChatCompletionsClient
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.inference.models import SystemMessage, UserMessage
-
 from serialize import chunk_enqueue
 from ollama import Client
 from task_loads import find_task
@@ -185,8 +184,12 @@ class TaskRuntime:
         response = client.complete(
             stream=True,
             messages=[
-                SystemMessage(content=self.task.system_prompt),
-                UserMessage(content=self.task.user_prompt)
+                SystemMessage(
+                    content=self.task.system_prompt if self.task.system_prompt else ''
+                ),
+                UserMessage(
+                    content=self.task.user_prompt if self.task.user_prompt else ''
+                )
             ],
             max_tokens=self.task.content_length,
             model=self.task.model_id,

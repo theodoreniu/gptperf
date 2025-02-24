@@ -39,9 +39,9 @@ def task_page(task_id: int):
         st.error("task not found")
         return
 
-    progress_percentage = ''
-    if task.status > 2:
-        progress_percentage = f"`{task.progress_percentage}%`"
+    progress_percentage = f"`{task.progress_percentage}%`"
+    if task.status < 2:
+        progress_percentage = ''
 
     st.markdown(
         f"## {task.status_icon} {task.name} `{task.status_text}` {progress_percentage}")

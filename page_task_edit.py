@@ -2,6 +2,7 @@
 from config import aoai, ds, ds_foundry, ds_models, aoai_models, model_types
 import streamlit as st
 from dotenv import load_dotenv
+from serialize import chunk_len, request_len
 from tables import Tasks
 from task_loads import add_task, delete_task, delete_task_data, queue_task, stop_task, update_task
 
@@ -217,8 +218,11 @@ def task_form(task: Tasks, edit: bool = False):
                 use_container_width=True
             )
         if run_btn:
-            queue_task(task)
-            st.success("Pendding")
+            if request_len() > 0 or chunk_len() > 0:
+                st.warning("Other tasks are still running, please wait...")
+            else:
+                queue_task(task)
+                st.success("Pendding for running...")
 
         with col3:
             stop_btn = st.button(

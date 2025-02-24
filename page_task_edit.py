@@ -38,7 +38,7 @@ def task_form(task: Tasks, edit: bool = False):
     col1, col2, col3, col4, col5, col6 = st.columns(6)
     with col1:
         task.threads = st.number_input(
-            label="Threads",
+            label="Concurrency",
             value=task.threads,
             step=1,
             min_value=1,

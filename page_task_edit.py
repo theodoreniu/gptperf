@@ -164,58 +164,71 @@ def task_form(task: Tasks, edit: bool = False):
                 placeholder="2024-08-01-preview"
             )
 
-    if task.status != 2:
-        label = "➕ Create"
-        if edit:
-            label = "🔄 Update"
-        create_update_btn = st.button(label=label)
-        if create_update_btn:
-            with st.spinner():
-                if not task.name:
-                    st.error("Name is required.")
+    def create_update(task: Tasks, edit: bool):
+        with st.spinner():
+            if not task.name:
+                st.error("Name is required.")
+                return
+            if not task.name:
+                st.error("Name is required.")
+                return
+            if not task.model_id:
+                st.error("Model ID is required.")
+                return
+            if not task.azure_endpoint:
+                st.error("endpoint is required.")
+                return
+            if task.model_type == aoai:
+                if not task.api_version:
+                    st.error("api_version is required.")
                     return
-                if not task.name:
-                    st.error("Name is required.")
+                if not task.deployment_name:
+                    st.error("deployment_name is required.")
                     return
-                if not task.model_id:
-                    st.error("Model ID is required.")
-                    return
-                if not task.azure_endpoint:
-                    st.error("endpoint is required.")
-                    return
-                if task.model_type == aoai:
-                    if not task.api_version:
-                        st.error("api_version is required.")
-                        return
-                    if not task.deployment_name:
-                        st.error("deployment_name is required.")
-                        return
-                if edit:
-                    update_task(task)
-                    st.success("Updated Succeed")
-                else:
-                    add_task(task)
-                    st.success("Created Succeed")
-
-    run_title = "🚀 Run"
-    if task.status == 2:
-        run_title = "🚀 Rerun"
-
-    if task.status != 1:
-        run_btn = st.button(
-            label=run_title,
-            key=f"run_task_{task.id}"
+            if edit:
+                update_task(task)
+                st.success("Updated Succeed")
+            else:
+                add_task(task)
+                st.success("Created Succeed")
+    if not edit:
+        create_update_btn = st.button(
+            label="➕ Create",
+            use_container_width=True,
         )
+        if create_update_btn:
+            return create_update(task, edit)
+
+    if edit:
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            create_update_btn = st.button(
+                label="🔄 Update",
+                disabled=task.status == 2,
+                use_container_width=True,
+            )
+        if create_update_btn:
+            return create_update(task, edit)
+
+        with col2:
+            run_btn = st.button(
+                label="🚀 Rerun" if task.status == 2 else "🚀 Run",
+                key=f"run_task_{task.id}",
+                disabled=task.status == 1,
+                use_container_width=True
+            )
         if run_btn:
             queue_task(task)
             st.success("Pendding")
 
-    if task.status != 1 and task.status != 2:
-        delete_btn = st.button(
-            label="🗑️ Delete", key=f"delete_task_{task.id}")
+        with col3:
+            delete_btn = st.button(
+                label="🗑️ Delete",
+                key=f"delete_task_{task.id}",
+                disabled=task.status == 1 or task.status == 2,
+                use_container_width=True
+            )
         if delete_btn:
             delete_task_data(task)
             delete_task(task)
             st.success("Deleted")
-
-    st.markdown("----------")

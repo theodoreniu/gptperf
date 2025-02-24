@@ -41,8 +41,7 @@ def task_form(task: Tasks, edit: bool = False):
             value=task.threads,
             step=1,
             min_value=1,
-            max_value=20,
-            help="!!"
+            max_value=1000,
         )
     with col2:
         task.request_per_thread = st.number_input(
@@ -51,7 +50,6 @@ def task_form(task: Tasks, edit: bool = False):
             step=1,
             min_value=1,
             max_value=1000,
-            help="!!"
         )
     with col3:
         st.number_input(

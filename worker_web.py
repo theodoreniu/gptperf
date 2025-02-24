@@ -54,7 +54,8 @@ if __name__ == "__main__":
                     st.error("Alias/Password is incorrect")
             except Exception as e:
                 st.error(e)
-                authenticator.logout()
+                st.info(
+                    "User information is not available, please clean your browser cache.")
         with col2:
             if not st.session_state["authentication_status"]:
                 register_user()

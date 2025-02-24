@@ -218,8 +218,10 @@ def task_form(task: Tasks, edit: bool = False):
                 use_container_width=True
             )
         if run_btn:
-            if request_len() > 0 or chunk_len() > 0:
-                st.warning("Other tasks are still running, please wait...")
+            queue_len = request_len() + chunk_len()
+            if queue_len > 0:
+                st.warning(
+                    f"Other tasks({queue_len}) are still running, please wait...")
             else:
                 queue_task(task)
                 st.success("Pendding for running...")

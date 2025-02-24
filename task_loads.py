@@ -401,7 +401,7 @@ def load_all_requests(task: Tasks, success: int) -> List[Requests]:
         Requests.task_id == task.id,
         Requests.success == success
     ).order_by(
-        Requests.request_index.desc()
+        Requests.created_at.desc()
     ).limit(
         10000
     ).all()

@@ -5,12 +5,14 @@ from tables import Tasks
 from task_loads import sql_query
 import numpy as np
 import streamlit as st
-from config import aoai, ds, ds_foundry, not_support_stream
+from config import not_support_stream
 from logger import logger
 
 
 def report_number(sql_string: str, index: int):
     try:
+        logger.info(sql_string)
+        
         res = sql_query(sql_string)
 
         request_count = [int(item[index]) for item in res]
@@ -48,9 +50,7 @@ def task_report(task: Tasks):
 
     if stream:
         return {
-            "tps": report_number(f"SELECT ROUND((created_at / 1000)) AS timestamp_seconds, COUNT(DISTINCT request_id) AS request_count FROM {Chunks.__tablename__} WHERE task_id={task.id} GROUP BY timestamp_seconds ORDER BY timestamp_seconds",
-                                 1
-                                 ),
+            "tps": report_number(f"SELECT ROUND((created_at / 1000)) AS timestamp_seconds, COUNT(DISTINCT request_id) AS request_count FROM {Chunks.__tablename__} WHERE task_id={task.id} GROUP BY timestamp_seconds ORDER BY timestamp_seconds", 1 ),
 
             "token / second": report_number(f"SELECT ROUND((created_at / 1000)) AS timestamp_seconds, sum(token_len) AS token_count FROM {Chunks.__tablename__} WHERE task_id = {task.id} and token_len>0 GROUP BY timestamp_seconds ORDER BY timestamp_seconds;", 1),
 

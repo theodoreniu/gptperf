@@ -36,13 +36,12 @@ if __name__ == "__main__":
         try:
             chunk = chunk_dequeue(redis)
             if chunk:
-                # logger.info(chunk.__dict__)
+                logger.info(chunk.__dict__)
                 add_chunk(chunk)
 
             request = request_dequeue(redis)
             if request:
-                # logger.info(request.__dict__)
-
+                logger.info(request.__dict__)
                 add_request(request)
 
                 if request.success == 1:

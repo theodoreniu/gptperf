@@ -1,6 +1,7 @@
 import json
 from redis import Redis
 
+from helper import redis_client
 from tables import Chunks
 from tables import Requests
 
@@ -43,6 +44,11 @@ def request_dequeue(redis_client: Redis) -> Requests | None:
     return None
 
 
+def request_len() -> int:
+    redis = redis_client()
+    return redis.llen(requests_queue_name)
+
+
 def chunk_enqueue(redis_client: Redis, task: Chunks):
     task_json = serialize(task)
     redis_client.rpush(chunks_queue_name, task_json)
@@ -54,3 +60,8 @@ def chunk_dequeue(redis_client: Redis) -> Chunks | None:
         task = deserialize(task_json, Chunks())
         return task
     return None
+
+
+def chunk_len() -> int:
+    redis = redis_client()
+    return redis.llen(chunks_queue_name)

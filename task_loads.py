@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import streamlit_authenticator as stauth
 from sqlalchemy.orm.session import Session
 from helper import get_mysql_session
+from serialize import chunk_len, request_len
 from tables import Chunks, Users
 from tables import Requests
 from tables import Tasks
@@ -93,6 +94,10 @@ def sql_commit(sql: str):
 
 
 def queue_task(task: Tasks):
+    if request_len() > 0 or chunk_len() > 0:
+        st.warning("Other tasks are still running, please wait...")
+        return
+
     session = get_mysql_session()
     try:
         task = session.query(

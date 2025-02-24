@@ -13,7 +13,7 @@ from azure.ai.inference.models import SystemMessage, UserMessage
 from serialize import chunk_enqueue
 from ollama import Client
 from task_loads import find_task
-
+import threading
 
 load_dotenv()
 
@@ -48,6 +48,29 @@ class TaskRuntime:
             user_id=self.task.user_id,
         )
 
+    def run_with_timeout(self, method, timeout):
+
+        event = threading.Event()
+
+        def target():
+            try:
+                method()
+            finally:
+                event.set()
+
+        thread = threading.Thread(target=target)
+        thread.start()
+
+        event.wait(timeout)
+
+        if thread.is_alive():
+            logger.error(
+                f"Timeout occurred while executing {method.__name__}.")
+            raise TimeoutError(
+                f"Timeout occurred while executing {method.__name__}.")
+        else:
+            logger.info(f"{method.__name__} completed within the timeout.")
+
     def num_tokens_from_messages(self):
         if self.task.model_type != aoai:
             return 0
@@ -77,12 +100,13 @@ class TaskRuntime:
 
             self.request.start_req_time = time_now()
 
+            timeout = self.task.timeout / 1000
             if self.task.model_type == aoai:
-                self.deal_aoai()
+                self.run_with_timeout(self.deal_aoai, timeout)
             elif self.task.model_type == ds:
-                self.deal_ds()
+                self.run_with_timeout(self.deal_ds, timeout)
             elif self.task.model_type == ds_foundry:
-                self.deal_ds_foundry()
+                self.run_with_timeout(self.deal_ds_foundry, timeout)
             else:
                 raise Exception(
                     f"Model type {self.task.model_type} not supported")

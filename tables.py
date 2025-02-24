@@ -96,7 +96,7 @@ class Tasks(Base):
         if self.status == 1:
             return '🟣'
         if self.status == 2:
-            return '🟠'
+            return '🔵'
         if self.status == 3:
             return '🔴'
         if self.status == 4:

@@ -1,3 +1,4 @@
+import traceback
 from dotenv import load_dotenv
 import redis
 import tiktoken
@@ -24,17 +25,16 @@ class TaskRuntime:
         self,
         task: Tasks,
         thread_num: int,
-        encoding: tiktoken.Encoding,
         request_index: int,
         redis: redis.Redis
     ):
         self.task = task
         self.last_token_time = None
         self.thread_num = thread_num
-        self.encoding = encoding
         self.request_index = request_index
         self.redis = redis
         self.stream = False if self.task.model_id in not_support_stream else True
+
         Requests = create_request_table_class(self.task.id)
         self.request = Requests(
             id=f"{pad_number(thread_num, task.threads)}{pad_number(request_index, task.request_per_thread)}",
@@ -50,14 +50,14 @@ class TaskRuntime:
 
     def run_with_timeout(self, method, timeout):
         event = threading.Event()
-        error = None
+        error_info = None
 
         def target():
-            nonlocal error
+            nonlocal error_info
             try:
                 method()
             except Exception as e:
-                error = e
+                error_info = traceback.format_exc()
             finally:
                 event.set()
 
@@ -69,9 +69,9 @@ class TaskRuntime:
         if thread.is_alive():
             raise TimeoutError(
                 f"Timeout occurred while executing {method.__name__}.")
-        elif error:
+        elif error_info:
             raise Exception(
-                f"An error occurred in {method.__name__}: {error}")
+                f"An error occurred in {method.__name__}:\n{error_info}")
 
     def num_tokens_from_messages(self):
         if self.task.model_type != aoai:
@@ -84,9 +84,23 @@ class TaskRuntime:
             num_tokens += tokens_per_message
             for key, value in message.items():
                 if value:
-                    num_tokens += len(self.encoding.encode(value))
+                    num_tokens += self.encode(value)
         num_tokens += 3
         return num_tokens
+
+    def encode(self, text):
+        try:
+            encoding = tiktoken.get_encoding("cl100k_base")
+
+            if self.task.model_type == aoai:
+                encoding = tiktoken.encoding_for_model(self.task.model_id)
+            else:
+                encoding = tiktoken.encoding_for_model('gpt-4o')
+
+            return len(encoding.encode(text))
+        except Exception as e:
+            logger.error(f"Error encoding text: {e}")
+            return 0
 
     def latency(self):
 
@@ -104,11 +118,11 @@ class TaskRuntime:
 
             timeout = self.task.timeout / 1000
             if self.task.model_type == aoai:
-                self.run_with_timeout(self.deal_aoai, timeout)
+                self.run_with_timeout(self.request_aoai, timeout)
             elif self.task.model_type == ds:
-                self.run_with_timeout(self.deal_ds, timeout)
+                self.run_with_timeout(self.request_ds, timeout)
             elif self.task.model_type == ds_foundry:
-                self.run_with_timeout(self.deal_ds_foundry, timeout)
+                self.run_with_timeout(self.request_ds_foundry, timeout)
             else:
                 raise Exception(
                     f"Model type {self.task.model_type} not supported")
@@ -125,13 +139,14 @@ class TaskRuntime:
             self.request.success = 1
         except Exception as e:
             self.request.success = 0
-            self.request.response = f"{e}"
+            error_info = traceback.format_exc()
+            self.request.response = f"{error_info}"
             logger.error(f'Error: {e}', exc_info=True)
         finally:
             self.request.completed_at = time_now()
             request_enqueue(self.redis, self.request)
 
-    def deal_ds(self):
+    def request_ds(self):
 
         client = Client(
             host=self.task.azure_endpoint,
@@ -153,49 +168,51 @@ class TaskRuntime:
         for chunk in stream:
             self.request.chunks_count += 1
 
-            Chunks = create_chunk_table_class(self.task.id)
-
-            task_chunk = Chunks(
-                id=f"{self.request.id}{pad_number(self.request.chunks_count, 1000000)}",
-                chunk_index=self.request.chunks_count,
-                task_id=self.task.id,
-                thread_num=self.thread_num,
-                request_id=self.request.id,
-                token_len=0,
-                characters_len=0,
-                created_at=time_now(),
-                user_id=self.task.user_id,
-                chunk_content=chunk['message']['content'],
-            )
+            content = chunk['message']['content']
+            last_token_latency_ms = None
 
             if not self.request.first_token_latency_ms:
                 self.request.first_token_latency_ms = so_far_ms(
                     self.request.start_req_time)
-                task_chunk.last_token_latency_ms = 0
+                last_token_latency_ms = 0
                 self.last_token_time = time_now()
             else:
-                task_chunk.last_token_latency_ms = so_far_ms(
+                last_token_latency_ms = so_far_ms(
                     self.last_token_time
                 )
                 self.last_token_time = time_now()
 
-            if task_chunk.chunk_content:
-                logger.info(task_chunk.chunk_content)
-                self.request.response += task_chunk.chunk_content
-                task_chunk.token_len += len(
-                    self.encoding.encode(task_chunk.chunk_content))
-                task_chunk.characters_len += len(task_chunk.chunk_content)
+            token_len = 0
+            characters_len = 0
+            if content:
+                logger.info(content)
+                self.request.response += content
+                token_len = self.encode(content)
+                characters_len = len(content)
 
-                self.request.output_token_count += len(
-                    self.encoding.encode(task_chunk.chunk_content))
+                self.request.output_token_count += token_len
 
-            task_chunk.request_latency_ms = so_far_ms(
-                self.request.start_req_time
+            Chunks = create_chunk_table_class(self.task.id)
+
+            chunk_itme = Chunks(
+                id=f"{self.request.id}{pad_number(self.request.chunks_count, 1000000)}",
+                chunk_index=self.request.chunks_count,
+                thread_num=self.thread_num,
+                task_id=self.task.id,
+                request_id=self.request.id,
+                token_len=token_len,
+                characters_len=characters_len,
+                created_at=time_now(),
+                chunk_content=content,
+                request_latency_ms=so_far_ms(
+                    self.request.start_req_time
+                ),
+                last_token_latency_ms=last_token_latency_ms,
             )
 
-            chunk_enqueue(self.redis, task_chunk)
+            chunk_enqueue(self.redis, chunk_itme)
 
-    def deal_ds_foundry(self):
+    def request_ds_foundry(self):
 
         client = ChatCompletionsClient(
             endpoint=self.task.azure_endpoint,
@@ -223,53 +240,56 @@ class TaskRuntime:
             if update.choices:
                 self.request.chunks_count += 1
 
+                last_token_latency_ms = None
+                if not self.request.first_token_latency_ms:
+                    self.request.first_token_latency_ms = so_far_ms(
+                        self.request.start_req_time)
+                    last_token_latency_ms = 0
+                    self.last_token_time = time_now()
+                else:
+                    last_token_latency_ms = so_far_ms(
+                        self.last_token_time
+                    )
+                    self.last_token_time = time_now()
+
+                content = update.choices[0].delta.content
+
+                token_len = 0
+                characters_len = 0
+
+                if content:
+
+                    logger.info(content)
+
+                    self.request.response += content
+                    token_len = self.encode(content)
+                    characters_len = len(content)
+
+                    self.request.output_token_count += token_len
+
                 Chunks = create_chunk_table_class(self.task.id)
 
                 task_chunk = Chunks(
                     id=f"{self.request.id}{pad_number(self.request.chunks_count, 1000000)}",
                     chunk_index=self.request.chunks_count,
-                    task_id=self.task.id,
                     thread_num=self.thread_num,
+                    task_id=self.task.id,
                     request_id=self.request.id,
-                    token_len=0,
-                    characters_len=0,
+                    token_len=token_len,
+                    characters_len=characters_len,
                     created_at=time_now(),
-                    user_id=self.task.user_id,
-                    chunk_content=update.choices[0].delta.content,
-                )
-
-                if not self.request.first_token_latency_ms:
-                    self.request.first_token_latency_ms = so_far_ms(
-                        self.request.start_req_time)
-                    task_chunk.last_token_latency_ms = 0
-                    self.last_token_time = time_now()
-                else:
-                    task_chunk.last_token_latency_ms = so_far_ms(
-                        self.last_token_time
-                    )
-                    self.last_token_time = time_now()
-
-                if task_chunk.chunk_content:
-
-                    logger.info(task_chunk.chunk_content)
-
-                    self.request.response += task_chunk.chunk_content
-                    task_chunk.token_len += len(
-                        self.encoding.encode(task_chunk.chunk_content))
-                    task_chunk.characters_len += len(task_chunk.chunk_content)
-
-                    self.request.output_token_count += len(
-                        self.encoding.encode(task_chunk.chunk_content))
-
-                task_chunk.request_latency_ms = so_far_ms(
-                    self.request.start_req_time
+                    chunk_content=content,
+                    request_latency_ms=so_far_ms(
+                        self.request.start_req_time
+                    ),
+                    last_token_latency_ms=last_token_latency_ms
                 )
 
                 chunk_enqueue(self.redis, task_chunk)
 
         client.close()
 
-    def deal_aoai(self):
+    def request_aoai(self):
 
         client = AzureOpenAI(
             api_version=self.task.api_version,
@@ -312,9 +332,8 @@ class TaskRuntime:
 
             self.request.chunks_count = 1
 
-            self.request.output_token_count += len(
-                self.encoding.encode(self.request.response)
-            )
+            self.request.output_token_count = self.encode(
+                self.request.response)
 
         if self.stream:
             for chunk in response:
@@ -322,45 +341,48 @@ class TaskRuntime:
                     continue
 
                 self.request.chunks_count += 1
+                content = chunk.choices[0].delta.content
+
+                last_token_latency_ms = None
+                if not self.request.first_token_latency_ms:
+                    self.request.first_token_latency_ms = so_far_ms(
+                        self.request.start_req_time)
+                    last_token_latency_ms = 0
+                    self.last_token_time = time_now()
+                else:
+                    last_token_latency_ms = so_far_ms(
+                        self.last_token_time
+                    )
+                    self.last_token_time = time_now()
+
+                token_len = 0
+                characters_len = 0
+                if content:
+                    logger.info(content)
+
+                    self.request.response += content
+
+                    token_len = self.encode(content)
+                    characters_len = len(content)
+
+                    self.request.output_token_count += token_len
 
                 Chunks = create_chunk_table_class(self.task.id)
 
                 task_chunk = Chunks(
                     id=f"{self.request.id}{pad_number(self.request.chunks_count, 1000000)}",
                     chunk_index=self.request.chunks_count,
-                    task_id=self.task.id,
                     thread_num=self.thread_num,
+                    task_id=self.task.id,
                     request_id=self.request.id,
-                    token_len=0,
-                    characters_len=0,
+                    token_len=token_len,
+                    characters_len=characters_len,
                     created_at=time_now(),
-                    user_id=self.task.user_id,
-                    chunk_content=chunk.choices[0].delta.content,
-                )
-
-                if not self.request.first_token_latency_ms:
-                    self.request.first_token_latency_ms = so_far_ms(
-                        self.request.start_req_time)
-                    task_chunk.last_token_latency_ms = 0
-                    self.last_token_time = time_now()
-                else:
-                    task_chunk.last_token_latency_ms = so_far_ms(
-                        self.last_token_time
+                    chunk_content=content,
+                    last_token_latency_ms=last_token_latency_ms,
+                    request_latency_ms=so_far_ms(
+                        self.request.start_req_time
                     )
-                    self.last_token_time = time_now()
-
-                if task_chunk.chunk_content:
-                    logger.info(task_chunk.chunk_content)
-                    self.request.response += task_chunk.chunk_content
-                    task_chunk.token_len += len(
-                        self.encoding.encode(task_chunk.chunk_content))
-                    task_chunk.characters_len += len(task_chunk.chunk_content)
-
-                    self.request.output_token_count += len(
-                        self.encoding.encode(task_chunk.chunk_content))
-
-                task_chunk.request_latency_ms = so_far_ms(
-                    self.request.start_req_time
                 )
 
                 chunk_enqueue(self.redis, task_chunk)

@@ -11,8 +11,13 @@ import streamlit as st
 from sqlalchemy import text
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+import threading
 
 Base = declarative_base()
+
+created_table_classes = {}
+
+table_creation_lock = threading.Lock()
 
 
 class Users(Base):
@@ -147,10 +152,17 @@ class Tasks(Base):
 def create_request_table_class(task_id: int):
     table_name = f'reuqests_{task_id}'
 
+    if table_name in created_table_classes:
+        return created_table_classes[table_name]
+
+    with table_creation_lock:
+        if table_name in created_table_classes:
+            return created_table_classes[table_name]
+
     class Requests(Base):
         __tablename__ = table_name
         __table_args__ = (
-            # Index('idxdd_success', 'success'),
+            Index('idx_success', 'success'),
             {'extend_existing': True}
         )
         id = Column(String(48), primary_key=True)
@@ -195,22 +207,30 @@ def create_request_table_class(task_id: int):
         def created_at_fmt(self):
             return format_milliseconds(self.created_at)
 
+    created_table_classes[table_name] = Requests
+
     return Requests
 
 
 def create_chunk_table_class(task_id: int):
     table_name = f'chunks_{task_id}'
 
+    if table_name in created_table_classes:
+        return created_table_classes[table_name]
+
+    with table_creation_lock:
+        if table_name in created_table_classes:
+            return created_table_classes[table_name]
+
     class Chunks(Base):
         __tablename__ = table_name
         __table_args__ = (
-            # Index('chunk_request_id', 'request_id'),
+            Index('chunk_request_id', 'request_id'),
             {'extend_existing': True}
         )
         id = Column(String(48), primary_key=True)
         task_id = Column(Integer)
         request_id = Column(String(48))
-        user_id = Column(Integer)
         chunk_index = Column(Integer)
         thread_num = Column(Integer)
         chunk_content = Column(String(1024))
@@ -227,6 +247,8 @@ def create_chunk_table_class(task_id: int):
         @property
         def created_at_fmt(self):
             return format_milliseconds(self.created_at)
+
+    created_table_classes[table_name] = Chunks
 
     return Chunks
 

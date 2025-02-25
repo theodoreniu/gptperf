@@ -399,7 +399,7 @@ def load_all_requests(task_id: int, success: int):
     ).filter(
         Requests.success == success
     ).order_by(
-        Requests.created_at.desc()
+        Requests.start_req_time.desc()
     ).limit(
         10000
     ).all()

@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 import redis
 import tiktoken
-from helper import data_id, so_far_ms, time_now
+from helper import pad_number, so_far_ms, time_now
 from serialize import request_enqueue
 from config import aoai, ds, ds_foundry, not_support_stream
 from tables import Tasks, create_chunk_table_class, create_request_table_class
@@ -37,7 +37,7 @@ class TaskRuntime:
         self.stream = False if self.task.model_id in not_support_stream else True
         Requests = create_request_table_class(self.task.id)
         self.request = Requests(
-            id=data_id(),
+            id=f"{pad_number(thread_num, task.threads)}{pad_number(request_index, task.request_per_thread)}",
             task_id=self.task.id,
             thread_num=self.thread_num,
             response="",
@@ -151,10 +151,13 @@ class TaskRuntime:
         )
 
         for chunk in stream:
+            self.request.chunks_count += 1
+
             Chunks = create_chunk_table_class(self.task.id)
 
             task_chunk = Chunks(
-                id=data_id(),
+                id=f"{self.request.id}{pad_number(self.request.chunks_count, 1000000)}",
+                chunk_index=self.request.chunks_count,
                 task_id=self.task.id,
                 thread_num=self.thread_num,
                 request_id=self.request.id,
@@ -186,13 +189,9 @@ class TaskRuntime:
                 self.request.output_token_count += len(
                     self.encoding.encode(task_chunk.chunk_content))
 
-            self.request.chunks_count += 1
-
             task_chunk.request_latency_ms = so_far_ms(
                 self.request.start_req_time
             )
-
-            task_chunk.chunk_index = self.request.chunks_count
 
             chunk_enqueue(self.redis, task_chunk)
 
@@ -222,11 +221,13 @@ class TaskRuntime:
         for update in response:
 
             if update.choices:
+                self.request.chunks_count += 1
 
                 Chunks = create_chunk_table_class(self.task.id)
 
                 task_chunk = Chunks(
-                    id=data_id(),
+                    id=f"{self.request.id}{pad_number(self.request.chunks_count, 1000000)}",
+                    chunk_index=self.request.chunks_count,
                     task_id=self.task.id,
                     thread_num=self.thread_num,
                     request_id=self.request.id,
@@ -260,13 +261,9 @@ class TaskRuntime:
                     self.request.output_token_count += len(
                         self.encoding.encode(task_chunk.chunk_content))
 
-                self.request.chunks_count += 1
-
                 task_chunk.request_latency_ms = so_far_ms(
                     self.request.start_req_time
                 )
-
-                task_chunk.chunk_index = self.request.chunks_count
 
                 chunk_enqueue(self.redis, task_chunk)
 
@@ -324,10 +321,13 @@ class TaskRuntime:
                 if len(chunk.choices) == 0:
                     continue
 
+                self.request.chunks_count += 1
+
                 Chunks = create_chunk_table_class(self.task.id)
 
                 task_chunk = Chunks(
-                    id=data_id(),
+                    id=f"{self.request.id}{pad_number(self.request.chunks_count, 1000000)}",
+                    chunk_index=self.request.chunks_count,
                     task_id=self.task.id,
                     thread_num=self.thread_num,
                     request_id=self.request.id,
@@ -349,8 +349,6 @@ class TaskRuntime:
                     )
                     self.last_token_time = time_now()
 
-                self.request.chunks_count += 1
-
                 if task_chunk.chunk_content:
                     logger.info(task_chunk.chunk_content)
                     self.request.response += task_chunk.chunk_content
@@ -364,8 +362,6 @@ class TaskRuntime:
                 task_chunk.request_latency_ms = so_far_ms(
                     self.request.start_req_time
                 )
-
-                task_chunk.chunk_index = self.request.chunks_count
 
                 chunk_enqueue(self.redis, task_chunk)
 

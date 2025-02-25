@@ -3,7 +3,7 @@
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, Boolean, BigInteger, Float, Text, Index
 from datetime import datetime
-from helper import get_mysql_session, time_now
+from helper import format_milliseconds, get_mysql_session, time_now
 from logger import logger
 from sqlalchemy import create_engine
 from helper import sql_string, db_string
@@ -73,12 +73,6 @@ class Tasks(Base):
         default=lambda: int(time_now()),
         onupdate=lambda: int(time_now())
     )
-
-    def get_created_at_datetime(self):
-        return datetime.fromtimestamp(self.created_at / 1000)
-
-    def get_updated_at_datetime(self):
-        return datetime.fromtimestamp(self.updated_at / 1000)
 
     @property
     def query(self):
@@ -187,35 +181,19 @@ def create_request_table_class(task_id: int):
 
         @property
         def start_req_time_fmt(self):
-            if not self.start_req_time:
-                return "N/A"
-            timestamp_sec = self.start_req_time / 1000
-            dt_object = datetime.fromtimestamp(timestamp_sec)
-            return dt_object.strftime('%Y-%m-%d %H:%M:%S')
+            return format_milliseconds(self.start_req_time)
 
         @property
         def end_req_time_fmt(self):
-            if not self.end_req_time:
-                return "N/A"
-            timestamp_sec = self.end_req_time / 1000
-            dt_object = datetime.fromtimestamp(timestamp_sec)
-            return dt_object.strftime('%Y-%m-%d %H:%M:%S')
+            return format_milliseconds(self.end_req_time)
 
         @property
         def completed_at_fmt(self):
-            if not self.completed_at:
-                return "N/A"
-            timestamp_sec = self.completed_at / 1000
-            dt_object = datetime.fromtimestamp(timestamp_sec)
-            return dt_object.strftime('%Y-%m-%d %H:%M:%S')
+            return format_milliseconds(self.completed_at)
 
         @property
         def created_at_fmt(self):
-            if not self.created_at:
-                return "N/A"
-            timestamp_sec = self.created_at / 1000
-            dt_object = datetime.fromtimestamp(timestamp_sec)
-            return dt_object.strftime('%Y-%m-%d %H:%M:%S')
+            return format_milliseconds(self.created_at)
 
     return Requests
 
@@ -245,6 +223,10 @@ def create_chunk_table_class(task_id: int):
             nullable=False,
             default=lambda: int(time_now())
         )
+
+        @property
+        def created_at_fmt(self):
+            return format_milliseconds(self.created_at)
 
     return Chunks
 

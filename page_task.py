@@ -94,7 +94,7 @@ def render_requests(task, status, title):
             ):
                 for request in requests:
                     st.markdown(
-                        f'`{request.start_req_time_fmt}` {request.id} `{request.request_index}/{request.thread_num}` <a href="/?request_id={request.id}&task_id={task.id}" target="_blank">Log</a>',
+                        f'`{request.start_req_time_fmt}` {request.id} <a href="/?request_id={request.id}&task_id={task.id}" target="_blank">👀 Log</a>',
                         unsafe_allow_html=True
                     )
     except Exception as e:

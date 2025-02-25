@@ -4,7 +4,7 @@ import streamlit as st
 from dotenv import load_dotenv
 from serialize import chunk_len, request_len
 from tables import Tasks, create_task_tables, delete_task_tables, truncate_table
-from task_loads import add_task, delete_task, queue_task, stop_task, update_task
+from task_loads import add_task, delete_task, queue_task, rebuild_task, stop_task, update_task
 
 load_dotenv()
 
@@ -248,6 +248,7 @@ def task_form(task: Tasks, edit: bool = False):
         if rebuild_btn:
             delete_task_tables(task.id)
             if create_task_tables(task.id):
+                rebuild_task(task.id)
                 st.success("Rebuilted")
         with col5:
             delete_btn = st.button(

@@ -89,6 +89,9 @@ class TaskRuntime:
         return num_tokens
 
     def encode(self, text):
+        if not text:
+            return 0
+
         try:
             encoding = tiktoken.get_encoding("cl100k_base")
 

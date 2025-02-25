@@ -26,7 +26,7 @@ def task_executor(task: Tasks):
 
     if task.feishu_token:
         feishu_text(
-            f"start to run {task.source_location} {task.target_location} {task.request_per_thread} {task.threads} {task.model_id}",
+            f"start to run {task.name}",
             task.feishu_token
         )
 

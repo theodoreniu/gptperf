@@ -24,6 +24,22 @@ db_string = f'mysql+pymysql://{user}:{password}@{host}'
 sql_string = f'{db_string}/{database}'
 
 
+def format_milliseconds(timestamp_ms):
+    if not timestamp_ms:
+        return "N/A"
+
+    seconds, milliseconds = divmod(timestamp_ms, 1000)
+    dt = datetime.fromtimestamp(seconds)
+    formatted_time = dt.strftime(f'%Y-%m-%d %H:%M:%S.{milliseconds:03d}')
+    return formatted_time
+
+
+def pad_number(num1, num2):
+    num2_length = len(str(num2))
+    padded_num1 = str(num1).zfill(num2_length)
+    return padded_num1
+
+
 def create_db():
     engine = create_engine(db_string)
     Session = sessionmaker(bind=engine)

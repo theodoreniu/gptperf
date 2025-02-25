@@ -105,7 +105,7 @@ def render_chunks(task_id: int, request_id: str,  title):
         for chunk in chunks:
             list.append({
                 "id": chunk.id,
-                "created_at": chunk.created_at,
+                "created_at": chunk.created_at_fmt,
                 "chunk_index": chunk.chunk_index,
                 "chunk_content": chunk.chunk_content,
                 "token_len": chunk.token_len,

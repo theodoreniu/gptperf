@@ -68,7 +68,7 @@ class TaskRuntime:
 
         if thread.is_alive():
             raise TimeoutError(
-                f"Timeout occurred while executing {method.__name__}.")
+                f"Timeout occurred while executing {method.__name__}")
         elif error_info:
             raise Exception(
                 f"An error occurred in {method.__name__}:\n{error_info}")
@@ -140,10 +140,13 @@ class TaskRuntime:
                 )
 
             self.request.success = 1
+        except TimeoutError as e:
+            self.request.success = 0
+            self.request.response = f"{e}"
+            logger.error(f'Timeout Error: {e}', exc_info=True)
         except Exception as e:
             self.request.success = 0
-            error_info = traceback.format_exc()
-            self.request.response = f"{error_info}"
+            self.request.response = traceback.format_exc()
             logger.error(f'Error: {e}', exc_info=True)
         finally:
             self.request.completed_at = time_now()

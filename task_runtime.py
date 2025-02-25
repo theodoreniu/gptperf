@@ -142,7 +142,7 @@ class TaskRuntime:
             self.request.success = 1
         except TimeoutError as e:
             self.request.success = 0
-            self.request.response = f"{e}"
+            self.request.response = f"No response within the limited time: {self.task.timeout} ms"
             logger.error(f'Timeout Error: {e}', exc_info=True)
         except Exception as e:
             self.request.success = 0

@@ -5,6 +5,7 @@ from task_runtime import TaskRuntime
 from theodoretools.bot import feishu_text
 from concurrent.futures import ThreadPoolExecutor
 from logger import logger
+from config import app_url
 
 
 def safe_create_and_run_task(
@@ -26,7 +27,7 @@ def task_executor(task: Tasks):
 
     if task.feishu_token:
         feishu_text(
-            f"start to run {task.name}",
+            f"start to run {task.name}: {app_url}/?task_id={task.id}",
             task.feishu_token
         )
 

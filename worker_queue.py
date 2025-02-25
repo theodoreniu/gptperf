@@ -45,7 +45,6 @@ if __name__ == "__main__":
                 check_status(request.task_id)
 
             if not chunk and not request:
-                # logger.info("waitting for sql ...")
                 sleep(1)
 
         except Exception as e:

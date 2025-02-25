@@ -4,6 +4,7 @@ from serialize import chunk_dequeue, request_dequeue
 from logger import logger
 from task_loads import add_chunk, add_request, error_task, find_task, succeed_task, task_request_failed, task_request_succeed
 from theodoretools.bot import feishu_text
+from config import app_url
 
 
 def check_status(task_id: int):
@@ -16,7 +17,7 @@ def check_status(task_id: int):
         error_task(task, "All requests failed")
         if task.feishu_token:
             feishu_text(
-                f"All requests failed task: {task.name}",
+                f"All requests failed task: {task.name}: {app_url}/?task_id={task.id}",
                 task.feishu_token
             )
         return
@@ -25,7 +26,7 @@ def check_status(task_id: int):
         succeed_task(task)
         if task.feishu_token:
             feishu_text(
-                f"Task {task.name} succeed",
+                f"Task {task.name} succeed: {app_url}/?task_id={task.id}",
                 task.feishu_token
             )
         return

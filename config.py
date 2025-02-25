@@ -1,7 +1,7 @@
 from datetime import datetime
 import os
 
-app_url = os.getenv('APP_URL', 'https://perf.azuretsp.com')
+app_url = os.getenv('APP_URL', 'http://localhost:9876')
 
 app_version = '0.0.1'
 

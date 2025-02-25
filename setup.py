@@ -15,7 +15,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'llmperf = llmperf.main:main',
+            'llmperf = cli.main:main',
         ],
     },
     classifiers=[

@@ -90,6 +90,24 @@ def sql_commit(sql: str):
     session.close()
 
 
+def rebuild_task(task_id: int):
+    session = get_mysql_session()
+    try:
+        task = session.query(
+            Tasks
+        ).filter(
+            Tasks.id == task_id
+        ).first()
+        task.status = 0
+        task.error_message = ""
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error: {e}")
+    finally:
+        session.close()
+
+
 def queue_task(task: Tasks):
     session = get_mysql_session()
     try:

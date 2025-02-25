@@ -7,3 +7,6 @@ __pycache__
 projects/
 mysql-data/
 init.lock
+*.egg-info/
+build/
+dist/

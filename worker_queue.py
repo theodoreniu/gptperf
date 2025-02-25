@@ -3,6 +3,7 @@ from helper import redis_client
 from serialize import chunk_dequeue, request_dequeue
 from logger import logger
 from task_loads import add_chunk, add_request, error_task, find_task, succeed_task, task_request_failed, task_request_succeed
+from theodoretools.bot import feishu_text
 
 
 def check_status(task_id: int):
@@ -13,10 +14,20 @@ def check_status(task_id: int):
 
     if task.request_failed == target_requests:
         error_task(task, "All requests failed")
+        if task.feishu_token:
+            feishu_text(
+                f"All requests failed task: {task.name}",
+                task.feishu_token
+            )
         return
 
     if total_requested == target_requests:
         succeed_task(task)
+        if task.feishu_token:
+            feishu_text(
+                f"Task {task.name} succeed",
+                task.feishu_token
+            )
         return
 
 

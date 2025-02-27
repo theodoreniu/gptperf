@@ -1,4 +1,5 @@
 import json
+import uuid
 import streamlit as st
 from dotenv import load_dotenv
 from serialize import chunk_len, request_len
@@ -12,9 +13,13 @@ from task_loads import (
     update_task,
 )
 from config import (
-    DEFAULT_MESSAGES,
+    DEFAULT_MESSAGES_COMPLETE,
     DEFAULT_MESSAGES_ASSISTANT,
     DEFAULT_MESSAGES_VISION,
+    MESSAGE_ASSISTANT,
+    MESSAGE_COMPLETE,
+    MESSAGE_TYPES,
+    MESSAGE_VISION,
     aoai,
     ds,
     ds_foundry,
@@ -23,10 +28,13 @@ from config import (
     model_types,
 )
 
+from template_complete import template_complete
+from template_vision import template_vision
+
 load_dotenv()
 
 
-def create_update(task: Tasks, edit: bool):
+def create_update(task: Tasks, edit: bool, messages: list):
     """Create or update a task after validating required fields.
 
     Args:
@@ -58,12 +66,6 @@ def create_update(task: Tasks, edit: bool):
             st.error("api_key is required.")
             return
 
-        try:
-            task.messages = json.loads(task.messages)
-        except:
-            st.error("Messages is not valid json.")
-            return
-
         if not task.messages:
             st.error("Messages is required.")
             return
@@ -73,7 +75,7 @@ def create_update(task: Tasks, edit: bool):
             return
 
         if edit:
-            update_task(task)
+            update_task(task, messages)
             st.success("Updated Succeed")
         else:
             task_id = add_task(task)
@@ -221,51 +223,39 @@ def task_form(task: Tasks, edit: bool = False):
                 placeholder="2024-08-01-preview",
             )
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        ct = st.button(
-            "Completion Template",
-            key=f"msg_completion_{task.id}",
-            use_container_width=True,
-        )
-    with col2:
-        at = st.button(
-            "Assistant Template",
-            key=f"msg_assistant_{task.id}",
-            use_container_width=True,
-        )
-    with col3:
-        vt = st.button(
-            "Vision Template", key=f"msg_vision_{task.id}", use_container_width=True
-        )
+    try:
+        index = MESSAGE_TYPES.index(task.message_type)
+    except:
+        index = 0
 
-    if ct:
-        st.text_area(
-            label="Please copy the following template to your task messages",
-            value=json.dumps(DEFAULT_MESSAGES, indent=2),
-            height=200,
-            disabled=True,
-        )
-    if at:
-        st.text_area(
-            label="Please copy the following template to your task messages",
-            value=json.dumps(DEFAULT_MESSAGES_ASSISTANT, indent=2),
-            height=200,
-            disabled=True,
-        )
-    if vt:
-        st.text_area(
-            label="Please copy the following template to your task messages",
-            value=json.dumps(DEFAULT_MESSAGES_VISION, indent=2),
-            height=300,
-            disabled=True,
-        )
-
-    task.messages = st.text_area(
-        label="Task Messages",
-        value=json.dumps(task.messages, indent=2),
-        height=400,
+    st.write(index)
+    message_type = st.selectbox(
+        label="Message Type",
+        options=MESSAGE_TYPES,
+        index=index,
     )
+
+    messages = task.messages
+
+    if task.message_type != message_type:
+        if message_type == MESSAGE_COMPLETE:
+            messages = template_complete(DEFAULT_MESSAGES_COMPLETE)
+        elif message_type == MESSAGE_ASSISTANT:
+            messages = template_complete(DEFAULT_MESSAGES_ASSISTANT)
+        elif message_type == MESSAGE_VISION:
+            messages = template_vision(DEFAULT_MESSAGES_VISION)
+    else:
+        if task.message_type == MESSAGE_COMPLETE:
+            messages = template_complete(task.messages)
+        elif task.message_type == MESSAGE_ASSISTANT:
+            messages = template_complete(task.messages)
+        elif task.message_type == MESSAGE_VISION:
+            messages = template_vision(task.messages)
+
+    task.message_type = message_type
+
+    with st.expander("Messages"):
+        st.json(messages)
 
     if not edit:
         create_update_btn = st.button(
@@ -273,19 +263,11 @@ def task_form(task: Tasks, edit: bool = False):
             use_container_width=True,
         )
         if create_update_btn:
-            return create_update(task, edit)
+            return create_update(task, edit, messages)
 
     if edit:
-        col1, col2, col3, col4, col5 = st.columns(5)
-        with col1:
-            create_update_btn = st.button(
-                label="🔄 Update",
-                disabled=task.status == 2,
-                use_container_width=True,
-            )
-        if create_update_btn:
-            create_update(task, edit)
-
+        create_update(task, edit, messages)
+        col2, col3, col4, col5 = st.columns(4)
         with col2:
             run_btn = st.button(
                 label="🚀 Run",

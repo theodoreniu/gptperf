@@ -141,6 +141,7 @@ def update_task(task_update: Tasks, messages: list):
         task.enable_think = task_update.enable_think
         task.messages = messages
         task.message_type = task_update.message_type
+        task.temperature = task_update.temperature
 
         session.commit()
     except Exception as e:

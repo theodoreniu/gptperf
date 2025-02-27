@@ -1,38 +1,19 @@
+"""File system watcher that automatically restarts worker queue on code changes."""
+
 import time
 import subprocess
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
-from logger import logger
+from observer_handler import MyHandler
 
-TARGET_SCRIPT = 'worker_queue.py'
-
-process = None
-
-
-class MyHandler(FileSystemEventHandler):
-    def on_modified(self, event):
-        global process
-
-        if event.src_path.endswith('.py'):
-            logger.info(f"{TARGET_SCRIPT} updated, restarting...")
-
-            if process and process.poll() is None:
-                process.terminate()
-                try:
-                    process.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-
-            process = subprocess.Popen(['python', TARGET_SCRIPT])
+TARGET_SCRIPT = "worker_queue.py"
 
 
 if __name__ == "__main__":
+    handler = MyHandler()
+    handler.process = subprocess.Popen(["python", TARGET_SCRIPT])
 
-    process = subprocess.Popen(['python', TARGET_SCRIPT])
-
-    event_handler = MyHandler()
     observer = Observer()
-    observer.schedule(event_handler, path='.', recursive=False)
+    observer.schedule(handler, path=".", recursive=False)
     observer.start()
 
     try:
@@ -41,10 +22,10 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         observer.stop()
 
-        if process and process.poll() is None:
-            process.terminate()
+        if handler.process and handler.process.poll() is None:
+            handler.process.terminate()
             try:
-                process.wait(timeout=5)
+                handler.process.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                process.kill()
+                handler.process.kill()
     observer.join()

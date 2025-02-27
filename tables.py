@@ -1,17 +1,26 @@
-
-
+import json
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, Boolean, BigInteger, Float, Text, Index
-from datetime import datetime
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Boolean,
+    BigInteger,
+    Float,
+    Text,
+    Index,
+    JSON,
+)
 from helper import format_milliseconds, get_mysql_session, time_now
 from logger import logger
 from sqlalchemy import create_engine
-from helper import sql_string, db_string
+from helper import sql_string
 import streamlit as st
 from sqlalchemy import text
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import threading
+from config import DEFAULT_MESSAGES
 
 Base = declarative_base()
 
@@ -21,7 +30,7 @@ table_creation_lock = threading.Lock()
 
 
 class Users(Base):
-    __tablename__ = 'users'
+    __tablename__ = "users"
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(50), unique=True)
     email = Column(String(150), unique=True)
@@ -29,19 +38,13 @@ class Users(Base):
     password = Column(String(30))
     role = Column(String(20))
     enable_user = Column(Boolean)
-    created_at = Column(
-        BigInteger,
-        nullable=False,
-        default=lambda: int(time_now())
-    )
+    created_at = Column(BigInteger, nullable=False, default=lambda: int(time_now()))
 
 
 class Tasks(Base):
-    __tablename__ = 'tasks'
+    __tablename__ = "tasks"
     id = Column(Integer, primary_key=True, autoincrement=True)
-    __table_args__ = (
-        Index('idx_user_id', 'user_id'),
-    )
+    __table_args__ = (Index("idx_user_id", "user_id"),)
     name = Column(String(1024))
     desc = Column(String(1024))
     model_type = Column(String(1024))
@@ -51,8 +54,7 @@ class Tasks(Base):
     api_key = Column(String(1024))
     model_id = Column(String(1024))
     user_id = Column(Integer)
-    system_prompt = Column(Text)
-    user_prompt = Column(Text)
+    messages = Column(JSON)
     source_location = ""
     target_location = ""
     deployment_type = Column(String(1024))
@@ -67,90 +69,64 @@ class Tasks(Base):
     enable_think = Column(Boolean)
     request_succeed = Column(Integer, default=0)
     request_failed = Column(Integer, default=0)
-    created_at = Column(
-        BigInteger,
-        nullable=False,
-        default=lambda: int(time_now())
-    )
+    created_at = Column(BigInteger, nullable=False, default=lambda: int(time_now()))
     updated_at = Column(
         BigInteger,
         nullable=False,
         default=lambda: int(time_now()),
-        onupdate=lambda: int(time_now())
+        onupdate=lambda: int(time_now()),
     )
 
     @property
-    def query(self):
-
-        if self.model_id == "o1-mini":
-            return [
-                {
-                    "role": "assistant",
-                    "content": self.system_prompt if self.system_prompt else ""
-                },
-                {
-                    "role": "user",
-                    "content": self.user_prompt if self.user_prompt else ""
-                },
-            ]
-
-        return [
-            {
-                "role": "system",
-                "content": self.system_prompt if self.system_prompt else ""
-            },
-            {
-                "role": "user",
-                "content": self.user_prompt if self.user_prompt else ""
-            },
-        ]
+    def messages_loads(self):
+        if self.messages:
+            return self.messages
+        else:
+            return DEFAULT_MESSAGES
 
     @property
     def progress_percentage(self):
+        """Calculate and return the task progress as a percentage, capped at 100."""
         request_total = self.threads * self.request_per_thread
         request_done = self.request_failed + self.request_succeed
-
-        percentage = (request_done / request_total) * 100
-        result = round(percentage)
-        if result > 100:
-            result = 100
-        return result
+        return min(100, round((request_done / request_total) * 100))
 
     @property
     def status_icon(self):
+        """Return the appropriate emoji icon based on the task's status."""
         if self.status == 0:
-            return '🟤'
+            return "🟤"
         if self.status == 1:
-            return '🟣'
+            return "🟣"
         if self.status == 2:
-            return '🔵'
+            return "🔵"
         if self.status == 3:
-            return '🔴'
+            return "🔴"
         if self.status == 4:
-            return '🟢'
+            return "🟢"
         if self.status == 5:
-            return '⛔'
-        return '🟤'
+            return "⛔"
+        return "🟤"
 
     @property
     def status_text(self):
         if self.status == 0:
-            return 'Created'
+            return "Created"
         if self.status == 1:
-            return 'Queue'
+            return "Queue"
         if self.status == 2:
-            return 'Running'
+            return "Running"
         if self.status == 3:
-            return 'Failed'
+            return "Failed"
         if self.status == 4:
-            return 'Completed'
+            return "Completed"
         if self.status == 5:
-            return 'Stoped'
-        return 'N/A'
+            return "Stoped"
+        return "N/A"
 
 
 def create_request_table_class(task_id: int):
-    table_name = f'reuqests_{task_id}'
+    table_name = f"requests_{task_id}"
 
     if table_name in created_table_classes:
         return created_table_classes[table_name]
@@ -160,11 +136,13 @@ def create_request_table_class(task_id: int):
             return created_table_classes[table_name]
 
     class Requests(Base):
+        """Database model for storing request data associated with a specific task.
+
+        Contains request metadata, timing information, and processing results.
+        """
+
         __tablename__ = table_name
-        __table_args__ = (
-            Index('idx_success', 'success'),
-            {'extend_existing': True}
-        )
+        __table_args__ = (Index("idx_success", "success"), {"extend_existing": True})
         id = Column(String(48), primary_key=True)
         task_id = Column(Integer)
         user_id = Column(Integer)
@@ -180,31 +158,29 @@ def create_request_table_class(task_id: int):
         success = Column(Integer)
         end_req_time = Column(BigInteger, nullable=True)
         start_req_time = Column(BigInteger, nullable=True)
-        created_at = Column(
-            BigInteger,
-            nullable=False,
-            default=lambda: int(time_now())
-        )
+        created_at = Column(BigInteger, nullable=False, default=lambda: int(time_now()))
         completed_at = Column(
-            BigInteger,
-            nullable=True,
-            default=lambda: int(time_now())
+            BigInteger, nullable=True, default=lambda: int(time_now())
         )
 
         @property
-        def start_req_time_fmt(self):
+        def start_req_time_fmt(self) -> str:
+            """Return the start_req_time timestamp formatted as a human-readable string."""
             return format_milliseconds(self.start_req_time)
 
         @property
-        def end_req_time_fmt(self):
+        def end_req_time_fmt(self) -> str:
+            """Return the end_req_time timestamp formatted as a human-readable string."""
             return format_milliseconds(self.end_req_time)
 
         @property
-        def completed_at_fmt(self):
+        def completed_at_fmt(self) -> str:
+            """Return the completed_at timestamp formatted as a human-readable string."""
             return format_milliseconds(self.completed_at)
 
         @property
-        def created_at_fmt(self):
+        def created_at_fmt(self) -> str:
+            """Return the created_at timestamp formatted as a human-readable string."""
             return format_milliseconds(self.created_at)
 
     created_table_classes[table_name] = Requests
@@ -213,7 +189,7 @@ def create_request_table_class(task_id: int):
 
 
 def create_chunk_table_class(task_id: int):
-    table_name = f'chunks_{task_id}'
+    table_name = f"chunks_{task_id}"
 
     if table_name in created_table_classes:
         return created_table_classes[table_name]
@@ -223,10 +199,15 @@ def create_chunk_table_class(task_id: int):
             return created_table_classes[table_name]
 
     class Chunks(Base):
+        """Database model for storing chunk data associated with a specific task.
+
+        Contains chunk metadata, timing information, and processing results.
+        """
+
         __tablename__ = table_name
         __table_args__ = (
-            Index('chunk_request_id', 'request_id'),
-            {'extend_existing': True}
+            Index("chunk_request_id", "request_id"),
+            {"extend_existing": True},
         )
         id = Column(String(48), primary_key=True)
         task_id = Column(Integer)
@@ -237,15 +218,13 @@ def create_chunk_table_class(task_id: int):
         token_len = Column(Integer)
         characters_len = Column(Integer)
         request_latency_ms = Column(Integer)
+        tpot = Column(Integer)
         last_token_latency_ms = Column(Integer)
-        created_at = Column(
-            BigInteger,
-            nullable=False,
-            default=lambda: int(time_now())
-        )
+        created_at = Column(BigInteger, nullable=False, default=lambda: int(time_now()))
 
         @property
-        def created_at_fmt(self):
+        def created_at_fmt(self) -> str:
+            """Return the created_at timestamp formatted as a human-readable string."""
             return format_milliseconds(self.created_at)
 
     created_table_classes[table_name] = Chunks
@@ -281,10 +260,8 @@ def truncate_table(task_id: int) -> bool:
     Requests = create_request_table_class(task_id)
 
     try:
-        session.execute(text(
-            f"TRUNCATE TABLE {Chunks.__tablename__};"))
-        session.execute(text(
-            f"TRUNCATE TABLE {Requests.__tablename__};"))
+        session.execute(text(f"TRUNCATE TABLE {Chunks.__tablename__};"))
+        session.execute(text(f"TRUNCATE TABLE {Requests.__tablename__};"))
         return True
     except Exception as e:
         st.error(f"DB create failed: {e}")
@@ -334,7 +311,7 @@ def init_user():
             name="Admin",
             password="admin",
             role="admin",
-            enable_user=True
+            enable_user=True,
         )
         session.add(admin)
         session.commit()

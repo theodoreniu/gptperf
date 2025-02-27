@@ -1,4 +1,3 @@
-
 import os
 import streamlit as st
 from dotenv import load_dotenv
@@ -13,30 +12,22 @@ load_dotenv()
 
 
 def page_title():
-    page_title = "LLM Perf"
+    """Configure and render the page title and logo."""
+    title = "LLM Perf"
     st.set_page_config(
-        page_title=page_title,
+        page_title=title,
         page_icon="avatars/favicon.ico",
         layout="wide",
         initial_sidebar_state="expanded",
     )
     st.image("avatars/logo.svg", width=100)
-    st.title(page_title)
+    st.title(title)
 
 
 if __name__ == "__main__":
-
     page_title()
 
-    if not os.path.exists("init.lock"):
-        if st.button("Initialize Database", key="init_db"):
-            create_db()
-            create_tables()
-            init_user()
-            with open("init.lock", "w") as f:
-                f.write("ok")
-
-    else:
+    if os.path.exists("init.lock"):
         authenticator = get_authenticator()
 
         col1, col2 = st.columns(2)
@@ -44,10 +35,10 @@ if __name__ == "__main__":
             try:
                 authenticator.login(
                     fields={
-                        'Form name': 'Login',
-                        'Username': 'Alias',
-                        'Password': 'Password',
-                        'Login': 'Login',
+                        "Form name": "Login",
+                        "Username": "Alias",
+                        "Password": "Password",
+                        "Login": "Login",
                     },
                 )
                 if st.session_state["authentication_status"] is False:
@@ -55,17 +46,25 @@ if __name__ == "__main__":
             except Exception as e:
                 st.error(e)
                 st.info(
-                    "User information is not available, please clean your browser cache.")
+                    "User information is not available, please clean your browser cache."
+                )
+
         with col2:
             if not st.session_state["authentication_status"]:
                 register_user()
 
         if st.session_state["authentication_status"]:
             st.write(
-                f'Welcome `{st.session_state["name"]}`, `{st.session_state["email"]}`, [llmperf](https://github.com/theodoreniu/llmperf): `{app_version}` App started at: `{app_started_at}`')
-
+                f'[Home](/)， Welcome `{st.session_state["name"]}`, `{st.session_state["email"]}`, [llmperf](https://github.com/theodoreniu/llmperf): `{app_version}` App started at: `{app_started_at}`'
+            )
             col1, col2 = st.columns([10, 2])
             with col1:
                 authenticator.logout()
-
             home_page()
+
+    elif st.button("Initialize Database", key="init_db"):
+        create_db()
+        create_tables()
+        init_user()
+        with open("init.lock", "w") as f:
+            f.write("ok")

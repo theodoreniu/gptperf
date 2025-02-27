@@ -12,10 +12,7 @@ load_dotenv()
 
 
 def register_user():
-    user = Users(
-        role="user",
-        created_at=time_now()
-    )
+    user = Users(role="user", created_at=time_now())
 
     with st.container(border=True):
         st.markdown("### Registration")
@@ -28,11 +25,11 @@ def register_user():
 
         col1, col2 = st.columns(2)
         with col1:
-            user.password = st.text_input("Password", type='password')
+            user.password = st.text_input("Password", type="password")
         with col2:
-            password = st.text_input("Password Repeat", type='password')
+            password = st.text_input("Password Repeat", type="password")
 
-        btn = st.button('Summit')
+        btn = st.button("Summit")
 
     if btn:
         if not user.username:
@@ -40,7 +37,6 @@ def register_user():
             return
         if not user.name:
             st.error("name is required.")
-            return
             return
         if not user.password:
             st.error("password is required.")
@@ -72,4 +68,4 @@ def register_user():
 
         user.email = f"{user.username}@microsoft.com"
         add_user(user)
-        st.success("Registed")
+        st.success("Register")

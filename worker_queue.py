@@ -2,7 +2,15 @@ from time import sleep
 from helper import redis_client
 from serialize import chunk_dequeue, request_dequeue
 from logger import logger
-from task_loads import add_chunk, add_request, error_task, find_task, succeed_task, task_request_failed, task_request_succeed
+from task_loads import (
+    add_chunk,
+    add_request,
+    error_task,
+    find_task,
+    succeed_task,
+    task_request_failed,
+    task_request_succeed,
+)
 from theodoretools.bot import feishu_text
 from config import app_url
 
@@ -18,7 +26,7 @@ def check_status(task_id: int):
         if task.feishu_token:
             feishu_text(
                 f"All requests failed task: {task.name}: {app_url}/?task_id={task.id}",
-                task.feishu_token
+                task.feishu_token,
             )
         return
 
@@ -27,26 +35,26 @@ def check_status(task_id: int):
         if task.feishu_token:
             feishu_text(
                 f"Task {task.name} succeed: {app_url}/?task_id={task.id}",
-                task.feishu_token
+                task.feishu_token,
             )
         return
 
 
 if __name__ == "__main__":
 
-    while (True):
+    while True:
 
         redis = redis_client()
 
         try:
             chunk = chunk_dequeue(redis)
             if chunk:
-                logger.info(chunk.__dict__)
+                # logger.info(chunk.__dict__)
                 add_chunk(chunk)
 
             request = request_dequeue(redis)
             if request:
-                logger.info(request.__dict__)
+                # logger.info(request.__dict__)
                 add_request(request)
 
                 if request.success == 1:
@@ -60,6 +68,6 @@ if __name__ == "__main__":
                 sleep(1)
 
         except Exception as e:
-            logger.error(f'Error: {e}', exc_info=True)
+            logger.error(f"Error: {e}", exc_info=True)
         finally:
             redis.close()

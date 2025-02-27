@@ -1,20 +1,19 @@
-
+from typing import List
 import streamlit as st
 from dotenv import load_dotenv
-from typing import List
 from helper import time_now
 from page_task_edit import task_form
 from tables import Tasks
 from page_request import request_page
 from page_task import task_page
 from task_loads import current_user, load_all_tasks
-
+from config import DEFAULT_MESSAGES
 
 load_dotenv()
 
 
 def home_page():
-
+    """Main page handler that routes to task or request pages based on URL parameters."""
     task_id = st.query_params.get("task_id", None)
     request_id = st.query_params.get("request_id", None)
 
@@ -30,6 +29,7 @@ def home_page():
 
 
 def create_task():
+    """Renders the task creation form with default values."""
     st.markdown("## 📗 Create Task")
 
     task = Tasks(
@@ -44,33 +44,30 @@ def create_task():
         request_per_thread=1,
         user_id=current_user().id,
         deployment_type="",
+        messages=DEFAULT_MESSAGES,
     )
 
-    with st.container(
-        border=True
-    ):
+    with st.container(border=True):
         task_form(task, False)
 
 
 def render_list():
+    """Displays a list of all tasks with their status and management links."""
     tasks: List[Tasks] = load_all_tasks()
     st.session_state.tasks = tasks
 
-    st.markdown(f"## 📁 Tasks ({len(st.session_state.tasks)})")
-
-    if st.button(f"Refresh", key="refresh", icon="🔄"):
+    if st.button("Refresh", key="refresh", icon="🔄"):
         st.session_state.tasks = load_all_tasks()
 
-    with st.container(
-        border=True
-    ):
+    st.markdown(f"## 📁 Tasks ({len(st.session_state.tasks)})")
 
-        for task in st.session_state.tasks:
-            desc = ""
-            if task.desc:
-                desc = f"| `{task.desc}`"
-
-            st.markdown(
-                f'{task.status_icon} {task.name} `{task.model_id}` {desc} <a href="/?task_id={task.id}" target="_blank">⚙️ Manage</a>',
-                unsafe_allow_html=True
-            )
+    for task in st.session_state.tasks:
+        desc = f"| `{task.desc}`" if task.desc else ""
+        with st.container(border=True):
+            col1, col2 = st.columns([12, 2])
+            with col1:
+                st.markdown(f"{task.status_icon} {task.name} `{task.model_id}` {desc}")
+            with col2:
+                st.link_button(
+                    "⚙️ Manage", url=f"/?task_id={task.id}", use_container_width=True
+                )

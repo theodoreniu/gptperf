@@ -1,38 +1,20 @@
+"""File system watcher that automatically restarts worker request on code changes."""
+
 import time
 import subprocess
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
-from logger import logger
+from observer_handler import MyHandler
 
-TARGET_SCRIPT = 'worker_request.py'
-
-process = None
-
-
-class MyHandler(FileSystemEventHandler):
-    def on_modified(self, event):
-        global process
-
-        if event.src_path.endswith('.py'):
-            logger.info(f"{TARGET_SCRIPT} updated, restarting...")
-
-            if process and process.poll() is None:
-                process.terminate()
-                try:
-                    process.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-
-            process = subprocess.Popen(['python', TARGET_SCRIPT])
+TARGET_SCRIPT = "worker_request.py"
 
 
 if __name__ == "__main__":
 
-    process = subprocess.Popen(['python', TARGET_SCRIPT])
+    process = subprocess.Popen(["python", TARGET_SCRIPT])
 
     event_handler = MyHandler()
     observer = Observer()
-    observer.schedule(event_handler, path='.', recursive=False)
+    observer.schedule(event_handler, path=".", recursive=False)
     observer.start()
 
     try:

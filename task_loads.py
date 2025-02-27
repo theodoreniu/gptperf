@@ -1,5 +1,3 @@
-
-
 from typing import List
 from sqlalchemy import text
 from dotenv import load_dotenv
@@ -19,28 +17,25 @@ def get_authenticator():
 
     users = load_all_users()
 
-    credentials = {
-        "usernames": {
-        }
-    }
+    credentials = {"usernames": {}}
 
     if len(users) == 0:
         st.error("No user found")
         return None
 
     for user in users:
-        credentials['usernames'][user.username] = {
+        credentials["usernames"][user.username] = {
             "id": user.id,
             "email": user.email,
             "name": user.name,
             "password": user.password,
-            "roles": [user.role]
+            "roles": [user.role],
         }
 
     return stauth.Authenticate(
         credentials=credentials,
-        cookie_name='random_cookie_name_perf2',
-        cookie_key='random_signature_key_llm_perf2',
+        cookie_name="random_cookie_name_perf2",
+        cookie_key="random_signature_key_llm_perf2",
         cookie_expiry_days=30,
     )
 
@@ -51,24 +46,18 @@ def is_admin() -> bool:
 
 def current_user() -> Users | None:
 
-    if 'user' in st.session_state:
-        return st.session_state['user']
+    if "user" in st.session_state:
+        return st.session_state["user"]
 
-    st.session_state['user'] = find_user_by_username(
-        st.session_state["username"]
-    )
+    st.session_state["user"] = find_user_by_username(st.session_state["username"])
 
-    return st.session_state['user']
+    return st.session_state["user"]
 
 
 def load_all_users() -> List[Users]:
     session = get_mysql_session()
 
-    results = session.query(
-        Users
-    ).order_by(
-        Users.created_at.desc()
-    ).all()
+    results = session.query(Users).order_by(Users.created_at.desc()).all()
 
     session.close()
 
@@ -93,11 +82,7 @@ def sql_commit(sql: str):
 def rebuild_task(task_id: int):
     session = get_mysql_session()
     try:
-        task = session.query(
-            Tasks
-        ).filter(
-            Tasks.id == task_id
-        ).first()
+        task = session.query(Tasks).filter(Tasks.id == task_id).first()
         task.status = 0
         task.error_message = ""
         session.commit()
@@ -111,11 +96,7 @@ def rebuild_task(task_id: int):
 def queue_task(task: Tasks):
     session = get_mysql_session()
     try:
-        task = session.query(
-            Tasks
-        ).filter(
-            Tasks.id == task.id
-        ).first()
+        task = session.query(Tasks).filter(Tasks.id == task.id).first()
         task.status = 1
         task.error_message = ""
         session.commit()
@@ -129,11 +110,7 @@ def queue_task(task: Tasks):
 def delete_task(task: Tasks):
     session = get_mysql_session()
     try:
-        task = session.query(
-            Tasks
-        ).filter(
-            Tasks.id == task.id
-        ).first()
+        task = session.query(Tasks).filter(Tasks.id == task.id).first()
         session.delete(task)
         session.commit()
     except Exception as e:
@@ -147,11 +124,7 @@ def update_task(task_update: Tasks):
     session = get_mysql_session()
     try:
 
-        task = session.query(
-            Tasks
-        ).filter(
-            Tasks.id == task_update.id
-        ).first()
+        task = session.query(Tasks).filter(Tasks.id == task_update.id).first()
 
         task.name = task_update.name
         task.desc = task_update.desc
@@ -166,8 +139,7 @@ def update_task(task_update: Tasks):
         task.threads = task_update.threads
         task.feishu_token = task_update.feishu_token
         task.enable_think = task_update.enable_think
-        task.system_prompt = task_update.system_prompt
-        task.user_prompt = task_update.user_prompt
+        task.messages = task_update.messages
 
         session.commit()
     except Exception as e:
@@ -222,11 +194,7 @@ def find_task(task_id: int):
     session = get_mysql_session()
 
     try:
-        return session.query(
-            Tasks
-        ).filter(
-            Tasks.id == task_id
-        ).first()
+        return session.query(Tasks).filter(Tasks.id == task_id).first()
     except Exception as e:
         session.rollback()
         logger.error(f"Error: {e}")
@@ -240,11 +208,7 @@ def find_user_by_username(username: str):
     session = get_mysql_session()
 
     try:
-        return session.query(
-            Users
-        ).filter(
-            Users.username == username
-        ).first()
+        return session.query(Users).filter(Users.username == username).first()
     except Exception as e:
         session.rollback()
         logger.error(f"Error: {e}")
@@ -273,11 +237,7 @@ def add_task(task: Tasks):
 def run_task(task_id: int):
     session = get_mysql_session()
     try:
-        task = session.query(
-            Tasks
-        ).filter(
-            Tasks.id == task_id
-        ).first()
+        task = session.query(Tasks).filter(Tasks.id == task_id).first()
         task.status = 2
         task.error_message = ""
         task.request_failed = 0
@@ -293,11 +253,7 @@ def run_task(task_id: int):
 def error_task(task: Tasks, message: str):
     session = get_mysql_session()
     try:
-        task = session.query(
-            Tasks
-        ).filter(
-            Tasks.id == task.id
-        ).first()
+        task = session.query(Tasks).filter(Tasks.id == task.id).first()
         task.status = 3
         task.error_message = message
         session.commit()
@@ -311,11 +267,7 @@ def error_task(task: Tasks, message: str):
 def stop_task(task: Tasks):
     session = get_mysql_session()
     try:
-        task = session.query(
-            Tasks
-        ).filter(
-            Tasks.id == task.id
-        ).first()
+        task = session.query(Tasks).filter(Tasks.id == task.id).first()
         task.status = 5
         session.commit()
     except Exception as e:
@@ -329,13 +281,9 @@ def task_request_succeed(task_id: int):
     session = get_mysql_session()
     try:
         session.execute(
-            update(
-                Tasks
-            ).where(
-                Tasks.id == task_id
-            ).values(
-                request_succeed=Tasks.request_succeed + 1
-            )
+            update(Tasks)
+            .where(Tasks.id == task_id)
+            .values(request_succeed=Tasks.request_succeed + 1)
         )
         session.commit()
     except Exception as e:
@@ -349,13 +297,9 @@ def task_request_failed(task_id: int):
     session = get_mysql_session()
     try:
         session.execute(
-            update(
-                Tasks
-            ).where(
-                Tasks.id == task_id
-            ).values(
-                request_failed=Tasks.request_failed + 1
-            )
+            update(Tasks)
+            .where(Tasks.id == task_id)
+            .values(request_failed=Tasks.request_failed + 1)
         )
         session.commit()
     except Exception as e:
@@ -368,11 +312,7 @@ def task_request_failed(task_id: int):
 def succeed_task(task: Tasks):
     session = get_mysql_session()
     try:
-        task = session.query(
-            Tasks
-        ).filter(
-            Tasks.id == task.id
-        ).first()
+        task = session.query(Tasks).filter(Tasks.id == task.id).first()
         task.status = 4
         task.error_message = ""
         session.commit()
@@ -389,19 +329,14 @@ def load_all_tasks() -> List[Tasks]:
     tasks = None
 
     if is_admin():
-        tasks = session.query(
-            Tasks
-        ).order_by(
-            Tasks.created_at.desc()
-        ).all()
+        tasks = session.query(Tasks).order_by(Tasks.created_at.desc()).all()
     else:
-        tasks = session.query(
-            Tasks
-        ).order_by(
-            Tasks.created_at.desc()
-        ).filter(
-            Tasks.user_id == current_user().id
-        ).all()
+        tasks = (
+            session.query(Tasks)
+            .order_by(Tasks.created_at.desc())
+            .filter(Tasks.user_id == current_user().id)
+            .all()
+        )
 
     session.close()
 
@@ -412,15 +347,13 @@ def load_all_requests(task_id: int, success: int):
     Requests = create_request_table_class(task_id)
     session = get_mysql_session()
 
-    requests = session.query(
-        Requests
-    ).filter(
-        Requests.success == success
-    ).order_by(
-        Requests.start_req_time.desc()
-    ).limit(
-        10000
-    ).all()
+    requests = (
+        session.query(Requests)
+        .filter(Requests.success == success)
+        .order_by(Requests.start_req_time.desc())
+        .limit(10000)
+        .all()
+    )
 
     session.close()
 
@@ -431,15 +364,15 @@ def load_all_chunks(task_id: int, request_id: str):
     session = get_mysql_session()
     Chunks = create_chunk_table_class(task_id)
 
-    results = session.query(
-        Chunks
-    ).filter(
-        Chunks.request_id == request_id,
-    ).order_by(
-        Chunks.created_at.asc()
-    ).limit(
-        10000
-    ).all()
+    results = (
+        session.query(Chunks)
+        .filter(
+            Chunks.request_id == request_id,
+        )
+        .order_by(Chunks.created_at.asc())
+        .limit(10000)
+        .all()
+    )
 
     session.close()
 
@@ -449,15 +382,13 @@ def load_all_chunks(task_id: int, request_id: str):
 def task_dequeue() -> Tasks | None:
     session = get_mysql_session()
 
-    task = session.query(
-        Tasks
-    ).filter(
-        Tasks.status == 1
-    ).order_by(
-        Tasks.created_at.asc()
-    ).limit(
-        1
-    ).first()
+    task = (
+        session.query(Tasks)
+        .filter(Tasks.status == 1)
+        .order_by(Tasks.created_at.asc())
+        .limit(1)
+        .first()
+    )
 
     session.close()
 
@@ -468,11 +399,7 @@ def find_request(task_id: int, request_id: str):
     Requests = create_request_table_class(task_id)
     session = get_mysql_session()
 
-    request = session.query(
-        Requests
-    ).filter(
-        Requests.id == request_id
-    ).first()
+    request = session.query(Requests).filter(Requests.id == request_id).first()
 
     session.close()
 

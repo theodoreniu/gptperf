@@ -12,16 +12,12 @@ chunks_queue_name = "chunks"
 
 
 def to_dict(obj):
-    result = {}
-    for column in obj.__table__.columns:
-        result[column.name] = getattr(obj, column.name)
-    return result
+    return {column.name: getattr(obj, column.name) for column in obj.__table__.columns}
 
 
 def serialize(task):
-    dict = to_dict(task)
-
-    return json.dumps(dict)
+    task_dict = to_dict(task)
+    return json.dumps(task_dict)
 
 
 def deserialize(task_dict, instance):
@@ -36,12 +32,10 @@ def request_enqueue(redis_client: Redis, task):
 
 
 def request_dequeue(redis_client: Redis):
-    task_json = redis_client.lpop(requests_queue_name)
-    if task_json:
+    if task_json := redis_client.lpop(requests_queue_name):
         task_dict = json.loads(task_json.decode("utf-8"))
         Requests = create_request_table_class(task_dict["task_id"])
-        task = deserialize(task_dict, Requests())
-        return task
+        return deserialize(task_dict, Requests())
     return None
 
 
@@ -56,12 +50,10 @@ def chunk_enqueue(redis_client: Redis, task):
 
 
 def chunk_dequeue(redis_client: Redis):
-    task_json = redis_client.lpop(chunks_queue_name)
-    if task_json:
+    if task_json := redis_client.lpop(chunks_queue_name):
         task_dict = json.loads(task_json.decode("utf-8"))
         Chunks = create_chunk_table_class(task_dict["task_id"])
-        task = deserialize(task_dict, Chunks())
-        return task
+        return deserialize(task_dict, Chunks())
     return None
 
 

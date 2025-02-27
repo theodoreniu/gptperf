@@ -20,8 +20,8 @@ password = os.getenv("MYSQL_PASSWORD")
 host = os.getenv("MYSQL_HOST")
 database = os.getenv("MYSQL_DB")
 
-db_string = f'mysql+pymysql://{user}:{password}@{host}'
-sql_string = f'{db_string}/{database}'
+db_string = f"mysql+pymysql://{user}:{password}@{host}"
+sql_string = f"{db_string}/{database}"
 
 
 def format_milliseconds(timestamp_ms):
@@ -30,14 +30,12 @@ def format_milliseconds(timestamp_ms):
 
     seconds, milliseconds = divmod(timestamp_ms, 1000)
     dt = datetime.fromtimestamp(seconds)
-    formatted_time = dt.strftime(f'%Y-%m-%d %H:%M:%S.{milliseconds:03d}')
-    return formatted_time
+    return dt.strftime(f"%Y-%m-%d %H:%M:%S.{milliseconds:03d}")
 
 
 def pad_number(num1, num2):
     num2_length = len(str(num2))
-    padded_num1 = str(num1).zfill(num2_length)
-    return padded_num1
+    return str(num1).zfill(num2_length)
 
 
 def create_db():
@@ -46,8 +44,11 @@ def create_db():
     session = Session()
 
     try:
-        session.execute(text(
-            f"CREATE DATABASE IF NOT EXISTS {database} DEFAULT CHARACTER SET = 'utf8mb4';"))
+        session.execute(
+            text(
+                f"CREATE DATABASE IF NOT EXISTS {database} DEFAULT CHARACTER SET = 'utf8mb4';"
+            )
+        )
         st.success(f"DB created")
     except Exception as e:
         st.error(f"DB create failed: {e}")
@@ -56,24 +57,19 @@ def create_db():
 
 
 def check_username(s):
-    pattern = r'^[a-z][a-z0-9.]*$'
+    pattern = r"^[a-z][a-z0-9.]*$"
     return bool(re.match(pattern, s))
 
 
 def redis_client() -> redis.Redis:
-
-    host = os.getenv("REDIS_HOST", 'localhost')
+    host = os.getenv("REDIS_HOST", "localhost")
     port = os.getenv("REDIS_PORT", 6379)
     pwd = os.getenv("REDIS_PWD", "")
-
     return redis.Redis(host=host, port=port, db=0)
 
 
 def so_far_ms(time):
-    if not time:
-        return 0
-
-    return time_now() - time
+    return 0 if not time else time_now() - time
 
 
 def time_now():
@@ -81,12 +77,8 @@ def time_now():
 
 
 def get_mysql_session() -> Session:
-    engine = create_engine(sql_string)
-
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    return session
+    return sessionmaker(bind=create_engine(sql_string))()
 
 
 def data_id():
-    return f"{uuid.uuid4()}".replace("-", "")
+    return str(uuid.uuid4()).replace("-", "")

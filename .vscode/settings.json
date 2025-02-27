@@ -1,9 +1,0 @@
-{
-    "json.schemas": [
-      {
-        "fileMatch": ["/tasks/*.json"], 
-        "url": "./schema.json" 
-      }
-    ]
-  }
-  

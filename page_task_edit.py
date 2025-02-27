@@ -1,39 +1,111 @@
-
-from config import aoai, ds, ds_foundry, ds_models, aoai_models, model_types
+import json
 import streamlit as st
 from dotenv import load_dotenv
 from serialize import chunk_len, request_len
 from tables import Tasks, create_task_tables, delete_task_tables, truncate_table
-from task_loads import add_task, delete_task, queue_task, rebuild_task, stop_task, update_task
+from task_loads import (
+    add_task,
+    delete_task,
+    queue_task,
+    rebuild_task,
+    stop_task,
+    update_task,
+)
+from streamlit_modal import Modal
+from streamlit import components
+from config import (
+    DEFAULT_MESSAGES,
+    DEFAULT_MESSAGES_ASSISTANT,
+    DEFAULT_MESSAGES_VISION,
+    aoai,
+    ds,
+    ds_foundry,
+    ds_models,
+    aoai_models,
+    model_types,
+)
 
 load_dotenv()
 
 
-def task_form(task: Tasks, edit: bool = False):
+def create_update(task: Tasks, edit: bool):
+    """Create or update a task after validating required fields.
 
+    Args:
+        task: Task object containing form data
+        edit: Whether to update existing (True) or create new (False)
+    """
+    with st.spinner():
+
+        if not task.name:
+            st.error("Name is required.")
+            return
+        if not task.name:
+            st.error("Name is required.")
+            return
+        if not task.model_id:
+            st.error("Model ID is required.")
+            return
+        if not task.azure_endpoint:
+            st.error("endpoint is required.")
+            return
+        if task.model_type == aoai:
+            if not task.api_version:
+                st.error("api_version is required.")
+                return
+            if not task.deployment_name:
+                st.error("deployment_name is required.")
+                return
+        if task.model_type in (aoai, ds_foundry) and not task.api_key:
+            st.error("api_key is required.")
+            return
+
+        try:
+            task.messages = json.loads(task.messages)
+        except:
+            st.error("Messages is not valid json.")
+            return
+
+        if not task.messages:
+            st.error("Messages is required.")
+            return
+
+        if task.messages == []:
+            st.error("Messages is required.")
+            return
+
+        if edit:
+            update_task(task)
+            st.success("Updated Succeed")
+        else:
+            task_id = add_task(task)
+            create_task_tables(task_id)
+            st.success("Created Succeed")
+
+
+def task_form(task: Tasks, edit: bool = False):
+    """Render a form for creating or editing a task.
+
+    Args:
+        task: Task object to edit or use as template for creation
+        edit: Whether this is an edit (True) or create (False) operation
+    """
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        task.name = st.text_input(
-            label="Name",
-            value=task.name
-        )
+        task.name = st.text_input(label="Name", value=task.name)
     with col2:
         task.desc = st.text_input(
-            label="Description / Size",
-            value=task.desc,
-            max_chars=200
+            label="Description / Size", value=task.desc, max_chars=200
         )
     with col3:
         task.api_key = st.text_input(
-            label="API Key",
-            value=task.api_key,
-            type="password"
+            label="API Key", value=task.api_key, type="password"
         )
     with col4:
         task.feishu_token = st.text_input(
             label="Feishu Token",
             value=task.feishu_token,
-            help="Will send message to feishu if set when task status changed"
+            help="Will send message to Feishu if set when task status changed",
         )
 
     col1, col2, col3, col4, col5, col6 = st.columns(6)
@@ -43,11 +115,11 @@ def task_form(task: Tasks, edit: bool = False):
             value=task.threads,
             step=1,
             min_value=1,
-            max_value=1000,
+            max_value=2000,
         )
     with col2:
         task.request_per_thread = st.number_input(
-            label="Request Per Thread",
+            label="Request Per Concurrency",
             value=task.request_per_thread,
             step=1,
             min_value=1,
@@ -57,7 +129,7 @@ def task_form(task: Tasks, edit: bool = False):
         st.number_input(
             label="Request Total",
             disabled=True,
-            value=task.threads * task.request_per_thread
+            value=task.threads * task.request_per_thread,
         )
     with col4:
         task.content_length = st.number_input(
@@ -65,48 +137,32 @@ def task_form(task: Tasks, edit: bool = False):
             value=task.content_length,
             step=1,
             min_value=1,
-            max_value=204800
+            max_value=204800,
         )
     with col5:
-        task.temperature = st.text_input(
-            label="Temperature",
-            value=task.temperature
-        )
+        task.temperature = st.text_input(label="Temperature", value=task.temperature)
     with col6:
         task.timeout = st.number_input(
             label="Timeout (ms)",
             value=task.timeout,
             step=1,
-            min_value=1000,
-            max_value=60*60*1000,
-        )
-    col1, col2 = st.columns(2)
-    with col1:
-        task.system_prompt = st.text_area(
-            label="System Prompt",
-            value=task.system_prompt,
-            height=200
-        )
-    with col2:
-        task.user_prompt = st.text_area(
-            label="User Prompt",
-            value=task.user_prompt,
-            height=200
+            min_value=100,
+            max_value=60 * 60 * 1000,
         )
 
     col1, col2, col3, col4, col5 = st.columns([1, 2, 1, 1, 1])
     with col1:
         task.model_type = st.selectbox(
-            label='💡 Model Type',
+            label="💡 Model Type",
             options=model_types,
-            index=model_types.index(task.model_type) if task.model_type else 0
+            index=model_types.index(task.model_type) if task.model_type else 0,
         )
     with col2:
         if task.model_type == aoai:
             task.azure_endpoint = st.text_input(
                 label="Azure Endpoint",
                 value=task.azure_endpoint,
-                placeholder="https://xxx.openai.azure.com"
+                placeholder="https://xxx.openai.azure.com",
             )
         if task.model_type == ds:
             task.azure_endpoint = st.text_input(
@@ -117,22 +173,28 @@ def task_form(task: Tasks, edit: bool = False):
             task.azure_endpoint = st.text_input(
                 label="Endpoint",
                 value=task.azure_endpoint,
-                placeholder="https://xxxxx.services.ai.azure.com/models"
+                placeholder="https://xxxxx.services.ai.azure.com/models",
             )
     with col3:
         if task.model_type == aoai:
             task.model_id = st.selectbox(
-                label='Model ID',
+                label="Model ID",
                 options=aoai_models,
-                index=aoai_models.index(
-                    task.model_id) if task.model_id and task.model_id in aoai_models else 0
+                index=(
+                    aoai_models.index(task.model_id)
+                    if task.model_id and task.model_id in aoai_models
+                    else 0
+                ),
             )
         if task.model_type == ds:
             task.model_id = st.selectbox(
-                label='Model ID',
+                label="Model ID",
                 options=ds_models,
-                index=ds_models.index(
-                    task.model_id) if task.model_id and task.model_id in ds_models else 0
+                index=(
+                    ds_models.index(task.model_id)
+                    if task.model_id and task.model_id in ds_models
+                    else 0
+                ),
             )
         if task.model_type == ds_foundry:
             task.model_id = st.text_input(
@@ -149,49 +211,64 @@ def task_form(task: Tasks, edit: bool = False):
             task.enable_think = st.selectbox(
                 label="Enable Think",
                 options=[True, False],
-                index=[True, False].index(
-                    task.enable_think) if task.enable_think else 1
+                index=(
+                    [True, False].index(task.enable_think) if task.enable_think else 1
+                ),
             )
     with col5:
         if task.model_type == aoai:
             task.api_version = st.text_input(
                 label="API Version",
                 value=task.api_version,
-                placeholder="2024-08-01-preview"
+                placeholder="2024-08-01-preview",
             )
 
-    def create_update(task: Tasks, edit: bool):
-        with st.spinner():
-            if not task.name:
-                st.error("Name is required.")
-                return
-            if not task.name:
-                st.error("Name is required.")
-                return
-            if not task.model_id:
-                st.error("Model ID is required.")
-                return
-            if not task.azure_endpoint:
-                st.error("endpoint is required.")
-                return
-            if task.model_type == aoai:
-                if not task.api_version:
-                    st.error("api_version is required.")
-                    return
-                if not task.deployment_name:
-                    st.error("deployment_name is required.")
-                    return
-            if task.model_type == aoai or task.model_type == ds_foundry:
-                if not task.api_key:
-                    st.error("api_key is required.")
-                    return
-            if edit:
-                update_task(task)
-                st.success("Updated Succeed")
-            else:
-                task_id = add_task(task)
-                create_task_tables(task_id)
-                st.success("Created Succeed")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        ct = st.button(
+            "Completion Template",
+            key=f"msg_completion_{task.id}",
+            use_container_width=True,
+        )
+    with col2:
+        at = st.button(
+            "Assistant Template",
+            key=f"msg_assistant_{task.id}",
+            use_container_width=True,
+        )
+    with col3:
+        vt = st.button(
+            "Vision Template", key=f"msg_vision_{task.id}", use_container_width=True
+        )
+
+    if ct:
+        st.text_area(
+            label="Please copy the following template to your task messages",
+            value=json.dumps(DEFAULT_MESSAGES, indent=2),
+            height=200,
+            disabled=True,
+        )
+    if at:
+        st.text_area(
+            label="Please copy the following template to your task messages",
+            value=json.dumps(DEFAULT_MESSAGES_ASSISTANT, indent=2),
+            height=200,
+            disabled=True,
+        )
+    if vt:
+        st.text_area(
+            label="Please copy the following template to your task messages",
+            value=json.dumps(DEFAULT_MESSAGES_VISION, indent=2),
+            height=300,
+            disabled=True,
+        )
+
+    task.messages = st.text_area(
+        label="Task Messages",
+        value=json.dumps(task.messages, indent=2),
+        height=400,
+    )
+
     if not edit:
         create_update_btn = st.button(
             label="➕ Create",
@@ -216,46 +293,47 @@ def task_form(task: Tasks, edit: bool = False):
                 label="🚀 Run",
                 key=f"run_task_{task.id}",
                 disabled=task.status in [1, 2],
-                use_container_width=True
+                use_container_width=True,
             )
         if run_btn:
             queue_len = request_len() + chunk_len()
             if queue_len > 0:
                 st.warning(
-                    f"Other tasks({queue_len}) are still running, please wait...")
+                    f"Other tasks({queue_len}) are still running, please wait..."
+                )
             else:
                 if truncate_table(task.id):
                     queue_task(task)
-                    st.success("Pendding for running...")
+                    st.success("Pending for running...")
 
         with col3:
             stop_btn = st.button(
                 label="⛔ Stop",
                 key=f"stop_task_{task.id}",
                 disabled=task.status in [0, 3, 4, 5],
-                use_container_width=True
+                use_container_width=True,
             )
         if stop_btn:
             stop_task(task)
-            st.success("Stoped")
+            st.success("Stop Succeed")
         with col4:
             rebuild_btn = st.button(
                 label="🪛 Rebuild Data Table",
                 key=f"rebuild_task_{task.id}",
-                disabled=task.status == 1 or task.status == 2,
-                use_container_width=True
+                disabled=task.status in (1, 2),
+                use_container_width=True,
             )
         if rebuild_btn:
             delete_task_tables(task.id)
             if create_task_tables(task.id):
                 rebuild_task(task.id)
-                st.success("Rebuilted")
+                st.success("Rebuild Succeed")
         with col5:
             delete_btn = st.button(
                 label="🗑️ Delete",
                 key=f"delete_task_{task.id}",
-                disabled=task.status == 1 or task.status == 2,
-                use_container_width=True
+                disabled=task.status in (1, 2),
+                use_container_width=True,
             )
         if delete_btn:
             delete_task_tables(task.id)

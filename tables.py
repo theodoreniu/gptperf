@@ -20,7 +20,7 @@ from sqlalchemy import text
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import threading
-from config import DEFAULT_MESSAGES
+from config import DEFAULT_MESSAGES_COMPLETE
 
 Base = declarative_base()
 
@@ -59,6 +59,7 @@ class Tasks(Base):
     target_location = ""
     deployment_type = Column(String(1024))
     feishu_token = Column(String(1024))
+    message_type = Column(String(1024))
     request_per_thread = Column(Integer)
     content_length = Column(Integer)
     temperature = Column(Float)
@@ -82,7 +83,7 @@ class Tasks(Base):
         if self.messages:
             return self.messages
         else:
-            return DEFAULT_MESSAGES
+            return DEFAULT_MESSAGES_COMPLETE
 
     @property
     def progress_percentage(self):

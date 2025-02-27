@@ -120,7 +120,7 @@ def delete_task(task: Tasks):
         session.close()
 
 
-def update_task(task_update: Tasks):
+def update_task(task_update: Tasks, messages: list):
     session = get_mysql_session()
     try:
 
@@ -139,7 +139,8 @@ def update_task(task_update: Tasks):
         task.threads = task_update.threads
         task.feishu_token = task_update.feishu_token
         task.enable_think = task_update.enable_think
-        task.messages = task_update.messages
+        task.messages = messages
+        task.message_type = task_update.message_type
 
         session.commit()
     except Exception as e:

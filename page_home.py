@@ -7,7 +7,7 @@ from tables import Tasks
 from page_request import request_page
 from page_task import task_page
 from task_loads import current_user, load_all_tasks
-from config import DEFAULT_MESSAGES
+from config import DEFAULT_MESSAGES_COMPLETE, MESSAGE_COMPLETE
 
 load_dotenv()
 
@@ -44,7 +44,8 @@ def create_task():
         request_per_thread=1,
         user_id=current_user().id,
         deployment_type="",
-        messages=DEFAULT_MESSAGES,
+        messages=DEFAULT_MESSAGES_COMPLETE,
+        message_type=MESSAGE_COMPLETE,
     )
 
     with st.container(border=True):

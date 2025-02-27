@@ -40,7 +40,7 @@ deployment_types = [
 ]
 
 
-DEFAULT_MESSAGES = [
+DEFAULT_MESSAGES_COMPLETE = [
     {"role": "system", "content": "You are a helpful assistant."},
     {"role": "user", "content": "Write a story about 50 words."},
 ]
@@ -65,3 +65,9 @@ DEFAULT_MESSAGES_VISION = [
         ],
     }
 ]
+
+
+MESSAGE_COMPLETE = "Complete"
+MESSAGE_ASSISTANT = "Assistant"
+MESSAGE_VISION = "Vision"
+MESSAGE_TYPES = [MESSAGE_COMPLETE, MESSAGE_ASSISTANT, MESSAGE_VISION]

@@ -89,7 +89,7 @@ def request_page(task_id: int, request_id: str):
         st.markdown("input:")
         st.text_area(
             label="input: ",
-            value=json.dumps(task.messages, indent=2),
+            value=json.dumps(task.messages, indent=2, ensure_ascii=False),
             height=250,
             disabled=True,
             label_visibility="hidden",

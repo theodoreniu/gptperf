@@ -16,10 +16,12 @@ from config import (
     DEFAULT_MESSAGES_COMPLETE,
     DEFAULT_MESSAGES_ASSISTANT,
     DEFAULT_MESSAGES_VISION,
+    DEFAULT_MESSAGES_VISION_BASE64,
     MESSAGE_ASSISTANT,
     MESSAGE_COMPLETE,
     MESSAGE_TYPES,
     MESSAGE_VISION,
+    MESSAGE_VISION_BASE64,
     aoai,
     ds,
     ds_foundry,
@@ -244,6 +246,9 @@ def task_form(task: Tasks, edit: bool = False):
             messages = template_complete(DEFAULT_MESSAGES_ASSISTANT)
         elif message_type == MESSAGE_VISION:
             messages = template_vision(DEFAULT_MESSAGES_VISION)
+        elif message_type == MESSAGE_VISION_BASE64:
+            messages = template_vision(DEFAULT_MESSAGES_VISION_BASE64)
+
     else:
         if task.message_type == MESSAGE_COMPLETE:
             messages = template_complete(task.messages)
@@ -251,11 +256,14 @@ def task_form(task: Tasks, edit: bool = False):
             messages = template_complete(task.messages)
         elif task.message_type == MESSAGE_VISION:
             messages = template_vision(task.messages)
+        elif task.message_type == MESSAGE_VISION_BASE64:
+            messages = template_vision(task.messages)
 
     task.message_type = message_type
 
-    with st.expander("Messages"):
-        st.json(messages)
+    if message_type != MESSAGE_VISION_BASE64:
+        with st.expander("Messages"):
+            st.json(messages)
 
     if not edit:
         create_update_btn = st.button(

@@ -7,7 +7,7 @@ def template_vision(messages: list):
     with st.form(key="new_message_form"):
         new_role = st.selectbox("Select Role:", ["system", "user", "assistant"])
         new_text = st.text_area("Message Content:")
-        new_image_url = st.text_input("Image URL:")
+        new_image_url = st.text_area("Image URL:")
 
         submit_button = st.form_submit_button(label="Add Message")
 
@@ -43,14 +43,14 @@ def template_vision(messages: list):
             new_content = []
             for content in message.get("content", []):
                 if content.get("type") == "text":
-                    new_text = st.text_input(
+                    new_text = st.text_area(
                         "Message Content:",
                         value=content.get("text", ""),
                         key=f'text_{idx}_{content.get("text", "")}',
                     )
                     new_content.append({"type": "text", "text": new_text})
                 elif content.get("type") == "image_url":
-                    new_image_url = st.text_input(
+                    new_image_url = st.text_area(
                         "Image URL:",
                         value=content.get("image_url", {}).get("url", ""),
                         key=f'image_{idx}_{content.get("image_url", {}).get("url", "")}',

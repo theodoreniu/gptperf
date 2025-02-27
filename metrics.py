@@ -71,6 +71,10 @@ def task_metrics(task: Tasks):
 
     if stream:
         return {
+            "Concurrency": report_number(
+                f"SELECT COUNT(DISTINCT thread_num) AS request_count FROM {requests}",
+                0,
+            ),
             "Threads Per Sec": report_number(
                 f"SELECT ROUND((created_at / 1000)) AS timestamp_seconds, COUNT(DISTINCT thread_num) AS request_count FROM {chunks} GROUP BY timestamp_seconds ORDER BY timestamp_seconds",
                 1,

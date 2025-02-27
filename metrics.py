@@ -80,19 +80,19 @@ def task_metrics(task: Tasks):
                 1,
             ),
             "Requests Per Sec": report_number(
-                f"SELECT ROUND((created_at / 1000)) AS timestamp_seconds, COUNT(DISTINCT id) AS request_count FROM {requests} GROUP BY timestamp_seconds ORDER BY timestamp_seconds",
+                f"SELECT ROUND((created_at / 1000)) AS timestamp_seconds, COUNT(DISTINCT id) AS request_count FROM {requests} WHERE success = 1 GROUP BY timestamp_seconds ORDER BY timestamp_seconds",
                 1,
             ),
             "Request Per Minute": report_number(
-                f"SELECT ROUND((created_at / 60000)) AS timestamp_seconds, COUNT(DISTINCT id) AS request_count FROM {requests} GROUP BY timestamp_seconds ORDER BY timestamp_seconds",
+                f"SELECT ROUND((created_at / 60000)) AS timestamp_seconds, COUNT(DISTINCT id) AS request_count FROM {requests} WHERE success = 1 GROUP BY timestamp_seconds ORDER BY timestamp_seconds",
                 1,
             ),
             "Input Token Per Sec": report_number(
-                f"SELECT ROUND((start_req_time / 1000)) AS timestamp_seconds, sum(input_token_count) AS input_token_count FROM {requests} GROUP BY timestamp_seconds ORDER BY timestamp_seconds;",
+                f"SELECT ROUND((start_req_time / 1000)) AS timestamp_seconds, sum(input_token_count) AS input_token_count FROM {requests} WHERE success = 1 GROUP BY timestamp_seconds ORDER BY timestamp_seconds;",
                 1,
             ),
             "Input Token Per Minute": report_number(
-                f"SELECT ROUND((start_req_time / 60000)) AS timestamp_seconds, sum(input_token_count) AS input_token_count FROM {requests} GROUP BY timestamp_seconds ORDER BY timestamp_seconds;",
+                f"SELECT ROUND((start_req_time / 60000)) AS timestamp_seconds, sum(input_token_count) AS input_token_count FROM {requests} WHERE success = 1 GROUP BY timestamp_seconds ORDER BY timestamp_seconds;",
                 1,
             ),
             "Output Token Per Sec": report_number(

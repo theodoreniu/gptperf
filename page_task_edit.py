@@ -11,8 +11,6 @@ from task_loads import (
     stop_task,
     update_task,
 )
-from streamlit_modal import Modal
-from streamlit import components
 from config import (
     DEFAULT_MESSAGES,
     DEFAULT_MESSAGES_ASSISTANT,

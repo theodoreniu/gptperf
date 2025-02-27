@@ -63,12 +63,12 @@ def template_vision(messages: list):
             if st.button("Update", key=f"update_{idx}"):
 
                 st.session_state.messages[idx] = {"role": role, "content": new_content}
-                st.success("Message updated successfully!")
+                st.success("Updated")
 
         with col4:
             if st.button("Delete", key=f"delete_{idx}"):
 
                 st.session_state.messages.pop(idx)
-                st.success("Message deleted successfully!")
+                st.success("Deleted")
 
     return st.session_state.messages

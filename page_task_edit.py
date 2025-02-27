@@ -230,7 +230,6 @@ def task_form(task: Tasks, edit: bool = False):
     except:
         index = 0
 
-    st.write(index)
     message_type = st.selectbox(
         label="Message Type",
         options=MESSAGE_TYPES,

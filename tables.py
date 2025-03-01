@@ -93,23 +93,6 @@ class Tasks(Base):
         return min(100, round((request_done / request_total) * 100))
 
     @property
-    def status_icon(self):
-        """Return the appropriate emoji icon based on the task's status."""
-        if self.status == 0:
-            return "🟤"
-        if self.status == 1:
-            return "🟣"
-        if self.status == 2:
-            return "🔵"
-        if self.status == 3:
-            return "🔴"
-        if self.status == 4:
-            return "🟢"
-        if self.status == 5:
-            return "⛔"
-        return "🟤"
-
-    @property
     def status_text(self):
         if self.status == 0:
             return "Created"

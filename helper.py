@@ -82,3 +82,19 @@ def get_mysql_session() -> Session:
 
 def data_id():
     return str(uuid.uuid4()).replace("-", "")
+
+
+def task_status_icon(status: int):
+    if status == 0:
+        return "🟤"
+    if status == 1:
+        return "🟣"
+    if status == 2:
+        return "🔵"
+    if status == 3:
+        return "🔴"
+    if status == 4:
+        return "🟢"
+    if status == 5:
+        return "⛔"
+    return "🟤"

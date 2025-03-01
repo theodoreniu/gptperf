@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
-from helper import get_mysql_session
+from helper import get_mysql_session, task_status_icon
 from page_task_edit import task_form
 from serialize import chunk_len
 from tables import Tasks
@@ -39,7 +39,7 @@ def task_page(task_id: int):
         progress_percentage = ""
 
     st.markdown(
-        f"## {task.status_icon} {task.name} `{task.status_text}` {progress_percentage}"
+        f"## {task_status_icon(task.status)} {task.name} `{task.status_text}` {progress_percentage}"
     )
 
     if task.status > 1 and task.progress_percentage > 0:
@@ -69,7 +69,7 @@ def display_metrics(task):
                 st.markdown(
                     f"`{queue_len}` chunks in queue, please wait them to finish and refresh report."
                 )
-                
+
             st.table(df)
         except Exception as e:
             st.error(e)

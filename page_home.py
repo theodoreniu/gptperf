@@ -1,7 +1,7 @@
 from typing import List
 import streamlit as st
 from dotenv import load_dotenv
-from helper import time_now
+from helper import time_now, task_status_icon
 from page_task_edit import task_form
 from tables import Tasks
 from page_request import request_page
@@ -67,7 +67,9 @@ def render_list():
         with st.container(border=True):
             col1, col2 = st.columns([12, 2])
             with col1:
-                st.markdown(f"{task.status_icon} {task.name} `{task.model_id}` {desc}")
+                st.markdown(
+                    f"{task_status_icon(task.status)} {task.name} `{task.model_id}` {desc}"
+                )
             with col2:
                 st.link_button(
                     "⚙️ Manage", url=f"/?task_id={task.id}", use_container_width=True

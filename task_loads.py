@@ -331,10 +331,32 @@ def load_all_tasks() -> List[Tasks]:
     tasks = None
 
     if is_admin():
-        tasks = session.query(Tasks).order_by(Tasks.created_at.desc()).all()
+        tasks = (
+            session.query(Tasks)
+            .with_entities(
+                Tasks.id,
+                Tasks.name,
+                Tasks.model_type,
+                Tasks.model_id,
+                Tasks.status,
+                Tasks.created_at,
+                Tasks.desc,
+            )
+            .order_by(Tasks.created_at.desc())
+            .all()
+        )
     else:
         tasks = (
             session.query(Tasks)
+            .with_entities(
+                Tasks.id,
+                Tasks.name,
+                Tasks.model_type,
+                Tasks.model_id,
+                Tasks.status,
+                Tasks.created_at,
+                Tasks.desc,
+            )
             .order_by(Tasks.created_at.desc())
             .filter(Tasks.user_id == current_user().id)
             .all()

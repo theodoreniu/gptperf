@@ -1,5 +1,3 @@
-import json
-import uuid
 import streamlit as st
 from dotenv import load_dotenv
 from serialize import chunk_len, request_len
@@ -16,12 +14,11 @@ from config import (
     DEFAULT_MESSAGES_COMPLETE,
     DEFAULT_MESSAGES_ASSISTANT,
     DEFAULT_MESSAGES_VISION,
-    DEFAULT_MESSAGES_VISION_BASE64,
     MESSAGE_ASSISTANT,
     MESSAGE_COMPLETE,
     MESSAGE_TYPES,
     MESSAGE_VISION,
-    MESSAGE_VISION_BASE64,
+    MODEL_TYPE_API,
     aoai,
     ds,
     ds_foundry,
@@ -177,6 +174,12 @@ def task_form(task: Tasks, edit: bool = False):
                 value=task.azure_endpoint,
                 placeholder="https://xxxxx.services.ai.azure.com/models",
             )
+        if task.model_type == MODEL_TYPE_API:
+            task.azure_endpoint = st.text_input(
+                label="Endpoint",
+                value=task.azure_endpoint,
+                placeholder="http://6.6.6.6:8080/v1/completions",
+            )
     with col3:
         if task.model_type == aoai:
             task.model_id = st.selectbox(
@@ -199,6 +202,11 @@ def task_form(task: Tasks, edit: bool = False):
                 ),
             )
         if task.model_type == ds_foundry:
+            task.model_id = st.text_input(
+                label="Model ID",
+                value=task.model_id,
+            )
+        if task.model_type == MODEL_TYPE_API:
             task.model_id = st.text_input(
                 label="Model ID",
                 value=task.model_id,
@@ -245,8 +253,6 @@ def task_form(task: Tasks, edit: bool = False):
             messages = template_complete(DEFAULT_MESSAGES_ASSISTANT)
         elif message_type == MESSAGE_VISION:
             messages = template_vision(DEFAULT_MESSAGES_VISION)
-        elif message_type == MESSAGE_VISION_BASE64:
-            messages = template_vision(DEFAULT_MESSAGES_VISION_BASE64)
 
     else:
         if task.message_type == MESSAGE_COMPLETE:
@@ -255,12 +261,10 @@ def task_form(task: Tasks, edit: bool = False):
             messages = template_complete(task.messages)
         elif task.message_type == MESSAGE_VISION:
             messages = template_vision(task.messages)
-        elif task.message_type == MESSAGE_VISION_BASE64:
-            messages = template_vision(task.messages)
 
     task.message_type = message_type
 
-    if message_type != MESSAGE_VISION_BASE64:
+    if message_type != MESSAGE_VISION:
         with st.expander("Messages"):
             st.json(messages)
 

@@ -52,7 +52,7 @@ class TaskRuntime:
             request_index=self.request_index,
             user_id=self.task.user_id,
         )
-        self.log(f"Request {self.request.id} started")
+        self.log("request created")
 
     def log(self, log_message: str, log_data: dict = None):
         log_item = self.Logs(

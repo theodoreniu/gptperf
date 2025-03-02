@@ -47,14 +47,14 @@ services:
       - app-network
 
   redis:
-    image: docker.1ms.run/library/redis:latest
+    image: redis:latest
     ports:
       - "3679:6379"
     networks:
       - app-network
 
   mysql:
-    image: docker.1ms.run/library/mysql:latest
+    image: mysql:latest
     environment:
       MYSQL_ROOT_PASSWORD: AIoqnh17a1
     ports:

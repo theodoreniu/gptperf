@@ -3,7 +3,12 @@ from sqlalchemy import text
 from dotenv import load_dotenv
 import streamlit_authenticator as stauth
 from helper import get_mysql_session
-from tables import Users, create_chunk_table_class, create_request_table_class
+from tables import (
+    Users,
+    create_chunk_table_class,
+    create_request_table_class,
+    create_log_table_class,
+)
 from tables import Tasks
 from sqlalchemy import update
 import streamlit as st
@@ -170,6 +175,19 @@ def add_chunk(chunk):
     try:
         new_chunk = copy.deepcopy(chunk)
         session.add(new_chunk)
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error: {e}")
+    finally:
+        session.close()
+
+
+def add_log(log):
+    session = get_mysql_session()
+    try:
+        new_log = copy.deepcopy(log)
+        session.add(new_log)
         session.commit()
     except Exception as e:
         session.rollback()
@@ -394,6 +412,25 @@ def load_all_chunks(task_id: int, request_id: str):
             Chunks.request_id == request_id,
         )
         .order_by(Chunks.created_at.asc())
+        .limit(10000)
+        .all()
+    )
+
+    session.close()
+
+    return results
+
+
+def load_all_logs(task_id: int, request_id: str):
+    session = get_mysql_session()
+    Logs = create_log_table_class(task_id)
+
+    results = (
+        session.query(Logs)
+        .filter(
+            Logs.request_id == request_id,
+        )
+        .order_by(Logs.created_at.asc())
         .limit(10000)
         .all()
     )

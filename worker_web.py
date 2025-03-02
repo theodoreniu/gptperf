@@ -63,8 +63,11 @@ if __name__ == "__main__":
             home_page()
 
     elif st.button("Initialize Database", key="init_db"):
-        create_db()
-        create_tables()
-        init_user()
-        with open("init.lock", "w") as f:
-            f.write("ok")
+        try:
+            create_db()
+            create_tables()
+            init_user()
+            with open("init.lock", "w") as f:
+                f.write("ok")
+        except Exception as e:
+            st.error(e)

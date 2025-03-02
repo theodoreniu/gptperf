@@ -3,7 +3,7 @@ import os
 
 app_url = os.getenv("APP_URL", "http://localhost:9876")
 
-app_version = "0.0.1"
+app_version = "0.0.2"
 
 app_started_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 

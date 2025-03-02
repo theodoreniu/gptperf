@@ -8,6 +8,7 @@ from tables import Tasks
 from metrics import task_metrics
 from task_loads import current_user, is_admin, load_all_requests
 from logger import logger
+import numpy as np
 
 
 load_dotenv()
@@ -53,8 +54,33 @@ def task_page(task_id: int):
 
     if task.status > 1:
         display_metrics(task)
+        render_charts(task)
         render_requests(task, 0, "❌ Failed Requests")
         render_requests(task, 1, "✅ Succeed Requests")
+
+
+def render_charts(task):
+    st.markdown("## 📉 Charts")
+
+    first_token_latency_ms_array = []
+    chunks_count_array = []
+    requests = load_all_requests(task.id, 1)
+    for request in requests:
+        first_token_latency_ms_array.append(
+            (request.first_token_latency_ms, request.request_latency_ms)
+        )
+        chunks_count_array.append((request.chunks_count, request.output_token_count))
+
+    st.line_chart(
+        pd.DataFrame(
+            first_token_latency_ms_array,
+            columns=["First Token Latency", "Request Latency"],
+        )
+    )
+
+    st.bar_chart(
+        pd.DataFrame(chunks_count_array, columns=["Chunks Count", "Output Token Count"])
+    )
 
 
 def display_metrics(task):

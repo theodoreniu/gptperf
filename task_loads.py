@@ -14,6 +14,7 @@ from sqlalchemy import update
 import streamlit as st
 from logger import logger
 import copy
+from sqlalchemy.sql import func
 
 load_dotenv()
 
@@ -385,13 +386,22 @@ def load_all_tasks() -> List[Tasks]:
     return tasks
 
 
-def load_all_requests(task_id: int, success: int):
+def load_all_requests(task_id: int):
     Requests = create_request_table_class(task_id)
     session = get_mysql_session()
 
     requests = (
         session.query(Requests)
-        .filter(Requests.success == success)
+        .with_entities(
+            Requests.id,
+            Requests.start_req_time,
+            Requests.first_token_latency_ms,
+            Requests.request_latency_ms,
+            Requests.chunks_count,
+            Requests.output_token_count,
+            Requests.success,
+            Requests.start_req_time,
+        )
         .order_by(Requests.start_req_time.desc())
         .limit(10000)
         .all()

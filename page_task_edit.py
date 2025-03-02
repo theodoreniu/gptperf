@@ -1,6 +1,6 @@
 import streamlit as st
 from dotenv import load_dotenv
-from serialize import chunk_len, request_len
+from serialize import redis_len
 from tables import Tasks, create_task_tables, delete_task_tables, truncate_table
 from task_loads import (
     add_task,
@@ -287,7 +287,7 @@ def task_form(task: Tasks, edit: bool = False):
                 use_container_width=True,
             )
         if run_btn:
-            queue_len = request_len() + chunk_len()
+            queue_len = redis_len()
             if queue_len > 0:
                 st.warning(
                     f"Other tasks({queue_len}) are still running, please wait..."

@@ -1,7 +1,6 @@
 import os
 import uuid
 from datetime import datetime
-import os
 import redis
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session
@@ -10,7 +9,6 @@ from dotenv import load_dotenv
 import re
 import streamlit as st
 from sqlalchemy import text
-from sqlalchemy import create_engine
 
 
 load_dotenv()

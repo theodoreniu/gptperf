@@ -5,7 +5,7 @@ import streamlit as st
 from dotenv import load_dotenv
 from helper import get_mysql_session
 from tables import Tasks, create_request_table_class
-from task_loads import current_user, is_admin, load_all_chunks
+from task_loads import current_user, is_admin, load_all_chunks, load_all_logs
 
 
 load_dotenv()
@@ -106,6 +106,8 @@ def request_page(task_id: int, request_id: str):
 
     render_chunks(task_id, request_id, "🚀 Chunks")
 
+    render_logs(task_id, request_id, "📒 Logs")
+
 
 def render_chunks(task_id: int, request_id: str, title):
     """Render a table of chunks associated with a request.
@@ -135,5 +137,34 @@ def render_chunks(task_id: int, request_id: str, title):
         if count > 0:
             st.markdown(f"## {title} ({count})")
             st.dataframe(chunk_list, use_container_width=True)
+    except Exception as e:
+        st.error(e)
+
+
+def render_logs(task_id: int, request_id: str, title):
+    """Render a table of chunks associated with a request.
+
+    Args:
+        task_id: ID of the task
+        request_id: ID of the request to show chunks for
+        title: Title to display above the chunks table
+    """
+    try:
+        logs = load_all_logs(task_id, request_id)
+        log_list = []
+
+        for log in logs:
+            log_list.append(
+                {
+                    "Created At": log.created_at_fmt,
+                    "Log Message": log.log_message,
+                    "Log Data": log.log_data,
+                }
+            )
+
+        count = len(logs)
+        if count > 0:
+            st.markdown(f"## {title} ({count})")
+            st.dataframe(log_list, use_container_width=True)
     except Exception as e:
         st.error(e)

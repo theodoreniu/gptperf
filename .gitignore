@@ -10,3 +10,4 @@ init.lock
 *.egg-info/
 build/
 dist/
+test.sh

@@ -1,10 +1,11 @@
 from time import sleep
 from helper import redis_client
-from serialize import chunk_dequeue, request_dequeue
+from serialize import chunk_dequeue, request_dequeue, log_dequeue
 from logger import logger
 from task_loads import (
     add_chunk,
     add_request,
+    add_log,
     error_task,
     find_task,
     succeed_task,
@@ -51,6 +52,11 @@ if __name__ == "__main__":
             if chunk:
                 # logger.info(chunk.__dict__)
                 add_chunk(chunk)
+
+            log = log_dequeue(redis)
+            if log:
+                # logger.info(log.__dict__)
+                add_log(log)
 
             request = request_dequeue(redis)
             if request:

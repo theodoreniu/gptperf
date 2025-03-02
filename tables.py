@@ -216,22 +216,65 @@ def create_chunk_table_class(task_id: int):
     return Chunks
 
 
+def create_log_table_class(task_id: int):
+    table_name = f"logs_{task_id}"
+
+    if table_name in created_table_classes:
+        return created_table_classes[table_name]
+
+    with table_creation_lock:
+        if table_name in created_table_classes:
+            return created_table_classes[table_name]
+
+    class Logs(Base):
+        """Database model for storing log data associated with a specific task.
+
+        Contains log data.
+        """
+
+        __tablename__ = table_name
+        __table_args__ = (
+            Index("log_request_id", "request_id"),
+            {"extend_existing": True},
+        )
+        id = Column(String(48), primary_key=True)
+        task_id = Column(Integer)
+        thread_num = Column(Integer)
+        request_id = Column(String(48))
+        log_message = Column(Text)
+        log_data = Column(JSON, nullable=True)
+        created_at = Column(BigInteger, nullable=False, default=lambda: int(time_now()))
+
+        @property
+        def created_at_fmt(self) -> str:
+            """Return the created_at timestamp formatted as a human-readable string."""
+            return format_milliseconds(self.created_at)
+
+    created_table_classes[table_name] = Logs
+
+    return Logs
+
+
 def create_task_tables(task_id: int) -> bool:
     engine = create_engine(sql_string)
 
     Chunks = create_chunk_table_class(task_id)
     Requests = create_request_table_class(task_id)
+    Logs = create_log_table_class(task_id)
 
     try:
         Base.metadata.create_all(engine)
         st.success(f"Table {Chunks.__tablename__} created")
         st.success(f"Table {Requests.__tablename__} created")
+        st.success(f"Table {Logs.__tablename__} created")
         return True
     except Exception as e:
         st.error(f"Table {Chunks.__tablename__} create failed: {e}")
         st.error(f"Table {Requests.__tablename__} create failed: {e}")
+        st.error(f"Table {Logs.__tablename__} create failed: {e}")
         logger.error(f"Table {Chunks.__tablename__} create failed: {e}")
         logger.error(f"Table {Requests.__tablename__} create failed: {e}")
+        logger.error(f"Table {Logs.__tablename__} create failed: {e}")
         return False
 
 
@@ -242,14 +285,15 @@ def truncate_table(task_id: int) -> bool:
 
     Chunks = create_chunk_table_class(task_id)
     Requests = create_request_table_class(task_id)
-
+    Logs = create_log_table_class(task_id)
     try:
         session.execute(text(f"TRUNCATE TABLE {Chunks.__tablename__};"))
         session.execute(text(f"TRUNCATE TABLE {Requests.__tablename__};"))
+        session.execute(text(f"TRUNCATE TABLE {Logs.__tablename__};"))
         return True
     except Exception as e:
-        st.error(f"DB create failed: {e}")
-        logger.error(f"DB create failed: {e}")
+        st.error(f"DB truncate failed: {e}")
+        logger.error(f"DB truncate failed: {e}")
         return False
     finally:
         session.close()
@@ -260,18 +304,22 @@ def delete_task_tables(task_id: int) -> bool:
 
     Chunks = create_chunk_table_class(task_id)
     Requests = create_request_table_class(task_id)
-
+    Logs = create_log_table_class(task_id)
     try:
         Chunks.__table__.drop(engine)
         Requests.__table__.drop(engine)
+        Logs.__table__.drop(engine)
         st.success(f"Table {Chunks.__tablename__} deleted")
         st.success(f"Table {Requests.__tablename__} deleted")
+        st.success(f"Table {Logs.__tablename__} deleted")
         return True
     except Exception as e:
         st.error(f"Table {Chunks.__tablename__} deletion failed: {e}")
         st.error(f"Table {Requests.__tablename__} deletion failed: {e}")
+        st.error(f"Table {Logs.__tablename__} deletion failed: {e}")
         logger.error(f"Table {Chunks.__tablename__} deletion failed: {e}")
         logger.error(f"Table {Requests.__tablename__} deletion failed: {e}")
+        logger.error(f"Table {Logs.__tablename__} deletion failed: {e}")
         return False
 
 

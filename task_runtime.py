@@ -5,18 +5,23 @@ import tiktoken
 from helper import pad_number, so_far_ms, time_now
 from serialize import request_enqueue
 from config import MODEL_TYPE_API, aoai, ds, ds_foundry, not_support_stream
-from tables import Tasks, create_chunk_table_class, create_request_table_class
+from tables import (
+    Tasks,
+    create_chunk_table_class,
+    create_log_table_class,
+    create_request_table_class,
+)
 from logger import logger
 from openai import AzureOpenAI
 from azure.ai.inference import ChatCompletionsClient
 from azure.core.credentials import AzureKeyCredential
-from azure.ai.inference.models import SystemMessage, UserMessage
-from serialize import chunk_enqueue
+from serialize import chunk_enqueue, log_enqueue
 from ollama import Client
 from task_loads import find_task
 import threading
 import requests
 import json
+import uuid
 
 load_dotenv()
 
@@ -32,8 +37,10 @@ class TaskRuntime:
         self.request_index = request_index
         self.redis = redis
         self.stream = False if self.task.model_id in not_support_stream else True
+        self.Chunks = create_chunk_table_class(task.id)
+        self.Logs = create_log_table_class(task.id)
 
-        Requests = create_request_table_class(self.task.id)
+        Requests = create_request_table_class(task.id)
         self.request = Requests(
             id=f"{pad_number(thread_num, task.threads)}{pad_number(request_index, task.request_per_thread)}",
             task_id=self.task.id,
@@ -45,6 +52,19 @@ class TaskRuntime:
             request_index=self.request_index,
             user_id=self.task.user_id,
         )
+        self.log("request created")
+
+    def log(self, log_message: str, log_data: dict = None):
+        log_item = self.Logs(
+            id=f"{uuid.uuid4()}",
+            task_id=self.task.id,
+            thread_num=self.thread_num,
+            request_id=self.request.id,
+            log_message=log_message,
+            log_data=log_data,
+            created_at=time_now(),
+        )
+        log_enqueue(self.redis, log_item)
 
     def run_with_timeout(self, method, timeout):
         event = threading.Event()
@@ -147,13 +167,14 @@ class TaskRuntime:
             request_enqueue(self.redis, self.request)
 
     def request_ds(self):
-
+        self.log(f"client init start")
         client = Client(
             host=self.task.azure_endpoint,
             headers={"api-key": self.task.api_key if self.task.api_key else ""},
             timeout=self.task.timeout / 1000,
         )
 
+        self.log(f"client request start")
         stream = client.chat(
             model=self.task.model_id,
             messages=self.task.messages_loads,
@@ -161,6 +182,7 @@ class TaskRuntime:
             options={"temperature": self.task.temperature},
         )
 
+        self.log(f"loop stream start")
         for chunk in stream:
             self.request.chunks_count += 1
 
@@ -187,9 +209,7 @@ class TaskRuntime:
 
                 self.request.output_token_count += token_len
 
-            Chunks = create_chunk_table_class(self.task.id)
-
-            chunk_itme = Chunks(
+            chunk_item = self.Chunks(
                 id=f"{self.request.id}{pad_number(self.request.chunks_count, 1000000)}",
                 chunk_index=self.request.chunks_count,
                 thread_num=self.thread_num,
@@ -203,15 +223,18 @@ class TaskRuntime:
                 last_token_latency_ms=last_token_latency_ms,
             )
 
-            chunk_enqueue(self.redis, chunk_itme)
+            chunk_enqueue(self.redis, chunk_item)
+
+        self.log(f"loop stream end")
 
     def request_ds_foundry(self):
-
+        self.log(f"client init start")
         client = ChatCompletionsClient(
             endpoint=self.task.azure_endpoint,
             credential=AzureKeyCredential(self.task.api_key),
         )
 
+        self.log(f"client request start")
         response = client.complete(
             stream=True,
             messages=self.task.messages_loads,
@@ -221,6 +244,7 @@ class TaskRuntime:
             timeout=self.task.timeout / 1000,
         )
 
+        self.log(f"loop stream start")
         for update in response:
 
             if update.choices:
@@ -252,9 +276,7 @@ class TaskRuntime:
 
                     self.request.output_token_count += token_len
 
-                Chunks = create_chunk_table_class(self.task.id)
-
-                task_chunk = Chunks(
+                task_chunk = self.Chunks(
                     id=f"{self.request.id}{pad_number(self.request.chunks_count, 1000000)}",
                     chunk_index=self.request.chunks_count,
                     thread_num=self.thread_num,
@@ -270,10 +292,11 @@ class TaskRuntime:
 
                 chunk_enqueue(self.redis, task_chunk)
 
+        self.log(f"loop stream end")
         client.close()
 
     def request_aoai(self):
-
+        self.log(f"client init start")
         client = AzureOpenAI(
             api_version=self.task.api_version,
             azure_endpoint=self.task.azure_endpoint,
@@ -282,6 +305,7 @@ class TaskRuntime:
             timeout=self.task.timeout / 1000,
         )
 
+        self.log(f"client request start")
         response = None
 
         if self.task.model_id in ["o3-mini", "o1-mini", "o1"]:
@@ -301,6 +325,7 @@ class TaskRuntime:
                 max_tokens=self.task.content_length,
             )
 
+        self.log(f"loop stream start")
         if not self.stream:
             self.request.response = response.choices[0].message.content
 
@@ -343,9 +368,7 @@ class TaskRuntime:
 
                     self.request.output_token_count += token_len
 
-                Chunks = create_chunk_table_class(self.task.id)
-
-                task_chunk = Chunks(
+                task_chunk = self.Chunks(
                     id=f"{self.request.id}{pad_number(self.request.chunks_count, 1000000)}",
                     chunk_index=self.request.chunks_count,
                     thread_num=self.thread_num,
@@ -361,10 +384,11 @@ class TaskRuntime:
 
                 chunk_enqueue(self.redis, task_chunk)
 
+        self.log(f"loop stream end")
         client.close()
 
     def request_api(self):
-
+        self.log(f"client init start")
         headers = {"Content-Type": "application/json"}
 
         data = {
@@ -374,6 +398,7 @@ class TaskRuntime:
             "stream": True,
         }
 
+        self.log(f"client request start", data)
         response = requests.post(
             url=self.task.azure_endpoint,
             headers=headers,
@@ -382,18 +407,19 @@ class TaskRuntime:
             timeout=self.task.timeout / 1000,
         )
 
+        self.log(f"client response start")
         logger.info(response.text)
 
-        # 确保请求成功
         if response.status_code == 200:
-            # 逐行读取响应数据
             for line in response.iter_lines():
                 if line:
                     chunk = json.loads(line)
+                    self.request.response += line
                     logger.info(chunk)
         else:
             logger.error(response)
 
+        self.log(f"loop stream end")
         return
         client = AzureOpenAI(
             api_version=self.task.api_version,

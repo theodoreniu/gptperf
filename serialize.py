@@ -2,13 +2,18 @@ import json
 from redis import Redis
 
 from helper import redis_client
-from tables import create_chunk_table_class, create_request_table_class
+from tables import (
+    create_chunk_table_class,
+    create_log_table_class,
+    create_request_table_class,
+)
 
 
 from logger import logger
 
 requests_queue_name = "requests"
 chunks_queue_name = "chunks"
+logs_queue_name = "logs"
 
 
 def to_dict(obj):
@@ -60,3 +65,25 @@ def chunk_dequeue(redis_client: Redis):
 def chunk_len() -> int:
     redis = redis_client()
     return redis.llen(chunks_queue_name)
+
+
+def log_enqueue(redis_client: Redis, task):
+    task_json = serialize(task)
+    redis_client.rpush(logs_queue_name, task_json)
+
+
+def log_dequeue(redis_client: Redis):
+    if task_json := redis_client.lpop(logs_queue_name):
+        task_dict = json.loads(task_json.decode("utf-8"))
+        Logs = create_log_table_class(task_dict["task_id"])
+        return deserialize(task_dict, Logs())
+    return None
+
+
+def log_len() -> int:
+    redis = redis_client()
+    return redis.llen(logs_queue_name)
+
+
+def redis_len():
+    return request_len() + chunk_len() + log_len()

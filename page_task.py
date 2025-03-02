@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
-from helper import get_mysql_session, task_status_icon
+from helper import format_milliseconds, get_mysql_session, task_status_icon
 from page_task_edit import task_form
 from serialize import chunk_len
 from tables import Tasks
@@ -53,34 +53,39 @@ def task_page(task_id: int):
         task_form(task, True)
 
     if task.status > 1:
+        requests = load_all_requests(task.id)
         display_metrics(task)
-        render_charts(task)
-        render_requests(task, 0, "❌ Failed Requests")
-        render_requests(task, 1, "✅ Succeed Requests")
+        render_charts(requests)
+        render_requests(task, requests, 0, "❌ Failed Requests")
+        render_requests(task, requests, 1, "✅ Succeed Requests")
 
 
-def render_charts(task):
+def render_charts(requests):
     st.markdown("## 📉 Charts")
+    requests = [request for request in requests if request.success == 1]
+    if len(requests) > 0:
+        first_token_latency_ms_array = []
+        chunks_count_array = []
+        for request in requests:
+            first_token_latency_ms_array.append(
+                (request.first_token_latency_ms, request.request_latency_ms)
+            )
+            chunks_count_array.append(
+                (request.chunks_count, request.output_token_count)
+            )
 
-    first_token_latency_ms_array = []
-    chunks_count_array = []
-    requests = load_all_requests(task.id, 1)
-    for request in requests:
-        first_token_latency_ms_array.append(
-            (request.first_token_latency_ms, request.request_latency_ms)
+        st.line_chart(
+            pd.DataFrame(
+                first_token_latency_ms_array,
+                columns=["First Token Latency", "Request Latency"],
+            )
         )
-        chunks_count_array.append((request.chunks_count, request.output_token_count))
 
-    st.line_chart(
-        pd.DataFrame(
-            first_token_latency_ms_array,
-            columns=["First Token Latency", "Request Latency"],
+        st.bar_chart(
+            pd.DataFrame(
+                chunks_count_array, columns=["Chunks Count", "Output Token Count"]
+            )
         )
-    )
-
-    st.bar_chart(
-        pd.DataFrame(chunks_count_array, columns=["Chunks Count", "Output Token Count"])
-    )
 
 
 def display_metrics(task):
@@ -101,10 +106,9 @@ def display_metrics(task):
             st.error(e)
 
 
-def render_requests(task, status, title):
+def render_requests(task, requests, status, title):
     try:
-        requests = load_all_requests(task.id, status)
-
+        requests = [request for request in requests if request.success == status]
         count = len(requests)
         if count > 0:
             st.markdown(f"## {title} ({count})")
@@ -112,7 +116,7 @@ def render_requests(task, status, title):
             with st.container(border=True, height=450 if len(requests) > 10 else None):
                 for request in requests:
                     st.markdown(
-                        f'`{request.start_req_time_fmt}` {request.id} <a href="/?request_id={request.id}&task_id={task.id}" target="_blank">👀 Log</a>',
+                        f'`{format_milliseconds(request.start_req_time)}` {request.id} | {request.output_token_count} <a href="/?request_id={request.id}&task_id={task.id}" target="_blank">👀 Log</a>',
                         unsafe_allow_html=True,
                     )
     except Exception as e:

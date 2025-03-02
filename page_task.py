@@ -61,11 +61,11 @@ def task_page(task_id: int):
 
 
 def render_charts(requests):
-    st.markdown("## 📉 Charts")
     requests = [request for request in requests if request.success == 1]
     if len(requests) > 0:
         first_token_latency_ms_array = []
         chunks_count_array = []
+
         for request in requests:
             first_token_latency_ms_array.append(
                 (request.first_token_latency_ms, request.request_latency_ms)
@@ -74,18 +74,23 @@ def render_charts(requests):
                 (request.chunks_count, request.output_token_count)
             )
 
-        st.line_chart(
-            pd.DataFrame(
-                first_token_latency_ms_array,
-                columns=["First Token Latency", "Request Latency"],
-            )
-        )
+        if len(first_token_latency_ms_array) > 0 and len(chunks_count_array) > 0:
+            st.markdown("## 📉 Charts")
 
-        st.bar_chart(
-            pd.DataFrame(
-                chunks_count_array, columns=["Chunks Count", "Output Token Count"]
+        if len(first_token_latency_ms_array) > 0:
+            st.line_chart(
+                pd.DataFrame(
+                    first_token_latency_ms_array,
+                    columns=["First Token Latency", "Request Latency"],
+                )
             )
-        )
+
+        if len(chunks_count_array) > 0:
+            st.bar_chart(
+                pd.DataFrame(
+                    chunks_count_array, columns=["Chunks Count", "Output Token Count"]
+                )
+            )
 
 
 def display_metrics(task):

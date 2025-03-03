@@ -64,12 +64,12 @@ def render_charts(requests):
     requests = [request for request in requests if request.success == 1]
     if len(requests) > 0:
         first_token_latency_ms_array = []
+        request_latency_ms_array = []
         chunks_count_array = []
 
         for request in requests:
-            first_token_latency_ms_array.append(
-                (request.first_token_latency_ms, request.request_latency_ms)
-            )
+            first_token_latency_ms_array.append(request.first_token_latency_ms)
+            request_latency_ms_array.append(request.request_latency_ms)
             chunks_count_array.append(
                 (request.chunks_count, request.output_token_count)
             )
@@ -77,14 +77,22 @@ def render_charts(requests):
         if len(first_token_latency_ms_array) > 0 and len(chunks_count_array) > 0:
             st.markdown("## 📉 Charts")
 
+        st.markdown("#### First Token Latency")
         if len(first_token_latency_ms_array) > 0:
             st.line_chart(
                 pd.DataFrame(
                     first_token_latency_ms_array,
-                    columns=["First Token Latency", "Request Latency"],
+                    columns=["First Token Latency"],
                 )
             )
 
+        st.markdown("#### Request Latency")
+        if len(request_latency_ms_array) > 0:
+            st.line_chart(
+                pd.DataFrame(request_latency_ms_array, columns=["Request Latency"])
+            )
+
+        st.markdown("#### Chunks Count / Output Token Count")
         if len(chunks_count_array) > 0:
             st.bar_chart(
                 pd.DataFrame(

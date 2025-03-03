@@ -175,12 +175,23 @@ class TaskRuntime:
         )
 
         self.log(f"client request start")
-        stream = client.chat(
-            model=self.task.model_id,
-            messages=self.task.messages_loads,
-            stream=True,
-            options={"temperature": self.task.temperature},
-        )
+        stream = None
+
+        if self.task.enable_think:
+            stream = client.chat(
+                model=self.task.model_id,
+                messages=self.task.messages_loads,
+                stream=True,
+                options={"temperature": self.task.temperature},
+            )
+        else:
+            stream = client.chat(
+                model=self.task.model_id,
+                messages=self.task.messages_loads,
+                stream=True,
+                format="json",
+                options={"temperature": self.task.temperature},
+            )
 
         self.log(f"loop stream start")
         for chunk in stream:

@@ -6,7 +6,8 @@ from page_task_edit import task_form
 from serialize import chunk_len
 from tables import Tasks
 from metrics import task_metrics
-from task_loads import current_user, is_admin, load_all_requests
+from task_diff import diff_tasks
+from task_loads import current_user, is_admin, load_all_requests, load_all_tasks
 from logger import logger
 
 
@@ -58,6 +59,40 @@ def task_page(task_id: int):
         render_requests(task, requests, 0, "❌ Failed Requests")
         render_requests(task, requests, 1, "✅ Succeed Requests")
 
+    if task.status == 4:
+        diff_tasks_page(task)
+
+
+def diff_tasks_page(current_task: Tasks):
+    tasks = load_all_tasks()
+    tasks = [task for task in tasks if task.id != current_task.id]
+    if len(tasks) > 1:
+        st.markdown("## 🔰 Diff Tasks")
+
+        options = ["NONE"]
+        for task in tasks:
+            options.append(f"{task.id} - {task.name}")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            task_selected = st.selectbox(
+                f"Select task to compare with `{current_task.name}`",
+                options,
+                index=0,
+            )
+        with col2:
+            compare_field = st.selectbox(
+                "Select field to compare",
+                ["first_token_latency_ms", "request_latency_ms"],
+                index=0,
+            )
+
+        if task_selected:
+            if task_selected != "NONE":
+                task_selected_id = int(task_selected.split(" - ")[0])
+                with st.spinner("Comparing tasks..."):
+                    diff_tasks(current_task.id, task_selected_id, compare_field)
+
 
 def render_charts(requests):
     requests = [request for request in requests if request.success == 1]
@@ -76,8 +111,8 @@ def render_charts(requests):
         if len(first_token_latency_ms_array) > 0 and len(chunks_count_array) > 0:
             st.markdown("## 📉 Charts")
 
-        st.markdown("#### First Token Latency")
         if len(first_token_latency_ms_array) > 0:
+            st.markdown("#### First Token Latency")
             st.line_chart(
                 pd.DataFrame(
                     first_token_latency_ms_array,
@@ -85,14 +120,14 @@ def render_charts(requests):
                 )
             )
 
-        st.markdown("#### Request Latency")
         if len(request_latency_ms_array) > 0:
+            st.markdown("#### Request Latency")
             st.line_chart(
                 pd.DataFrame(request_latency_ms_array, columns=["Request Latency"])
             )
 
-        st.markdown("#### Chunks Count / Output Token Count")
         if len(chunks_count_array) > 0:
+            st.markdown("#### Chunks Count / Output Token Count")
             st.bar_chart(
                 pd.DataFrame(
                     chunks_count_array, columns=["Chunks Count", "Output Token Count"]
@@ -108,6 +143,7 @@ def display_metrics(task):
             df = pd.DataFrame.from_dict(data, orient="index")
             queue_len = chunk_len()
             st.markdown("## 📊 Metrics")
+            st.markdown(f"Name: `{task.name}`")
             if queue_len > 0:
                 st.markdown(
                     f"`{queue_len}` chunks in queue, please wait them to finish and refresh report."

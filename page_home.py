@@ -9,6 +9,7 @@ from page_task import task_page
 from task_loads import current_user, load_all_tasks
 from config import DEFAULT_MESSAGES_COMPLETE, MESSAGE_COMPLETE
 
+
 load_dotenv()
 
 

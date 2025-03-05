@@ -60,6 +60,7 @@ class Tasks(Base):
     message_type = Column(String(1024))
     request_per_thread = Column(Integer)
     content_length = Column(Integer)
+    max_tokens = Column(Integer)
     temperature = Column(Float)
     timeout = Column(Integer)
     threads = Column(Integer)

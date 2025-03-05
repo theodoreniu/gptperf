@@ -147,6 +147,7 @@ def update_task(task_update: Tasks, messages: list):
         task.messages = messages
         task.message_type = task_update.message_type
         task.temperature = task_update.temperature
+        task.max_tokens = task_update.max_tokens
 
         session.commit()
     except Exception as e:

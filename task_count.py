@@ -1,25 +1,24 @@
+import traceback
 import streamlit as st
 from task_loads import sql_query
 from tables import Tasks
 from logger import logger
 
 
-def format_number(number: int):
-    return number
-    # return f"{number:,}"
-
-
 def report_number(sql_string: str, index: int):
 
     try:
         res = sql_query(sql_string)
-        if request_count := [int(item[index]) for item in res]:
-            return request_count[0]
+        for item in res:
+            if item[index] is None:
+                return "N/A"
+            return int(item[index])
     except Exception as e:
         logger.error(e)
-        st.error(e)
+        error_info = traceback.format_exc()
+        st.error(error_info, icon="🚨")
 
-    return {}
+    return "N/A"
 
 
 def task_count(task: Tasks):

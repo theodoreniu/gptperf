@@ -26,9 +26,8 @@ from serialize import chunk_enqueue, log_enqueue
 from ollama import Client
 from task_loads import find_task
 import threading
-import requests
-import json
 import uuid
+import openai
 
 load_dotenv()
 
@@ -166,7 +165,7 @@ class TaskRuntime:
                 self.run_with_timeout(self.request_ds_foundry, timeout)
 
             elif self.task.model_type == MODEL_TYPE_API:
-                self.run_with_timeout(self.request_api, timeout)
+                self.request_api()
 
             else:
                 raise Exception(f"Model type {self.task.model_type} not supported")
@@ -210,6 +209,7 @@ class TaskRuntime:
                 messages=self.task.messages_loads,
                 stream=True,
                 options={"temperature": self.task.temperature},
+                max_tokens=self.task.max_tokens,
             )
         else:
             stream = client.chat(
@@ -218,6 +218,7 @@ class TaskRuntime:
                 stream=True,
                 format="json",
                 options={"temperature": self.task.temperature},
+                max_tokens=self.task.max_tokens,
             )
 
         self.log(f"loop stream start")
@@ -277,7 +278,7 @@ class TaskRuntime:
         response = client.complete(
             stream=True,
             messages=self.task.messages_loads,
-            max_tokens=self.task.content_length,
+            max_tokens=self.task.max_tokens,
             model=self.task.model_id,
             temperature=self.task.temperature,
             timeout=httpx.Timeout(self.task.timeout / 1000),
@@ -352,8 +353,8 @@ class TaskRuntime:
                 messages=self.task.messages_loads,
                 model=self.task.model_id,
                 stream=self.stream,
-                # temperature=self.task.temperature,
-                max_completion_tokens=self.task.content_length,
+                temperature=self.task.temperature,
+                max_completion_tokens=self.task.max_tokens,
             )
         else:
             response = client.chat.completions.create(
@@ -361,7 +362,7 @@ class TaskRuntime:
                 model=self.task.model_id,
                 stream=self.stream,
                 temperature=self.task.temperature,
-                max_tokens=self.task.content_length,
+                max_tokens=self.task.max_tokens,
             )
 
         self.log(f"loop stream start")
@@ -428,65 +429,21 @@ class TaskRuntime:
 
     def request_api(self):
         self.log(f"client init start")
-        headers = {"Content-Type": "application/json"}
 
-        data = {
-            "model": self.task.model_id,
-            "prompt": "What is the largest planet?",
-            "max_tokens": self.task.content_length,
-            "stream": True,
-        }
-
-        self.log(f"client request start", data)
-        response = requests.post(
-            url=self.task.azure_endpoint,
-            headers=headers,
-            data=json.dumps(data),
-            stream=True,
-            timeout=httpx.Timeout(self.task.timeout / 1000),
+        client = openai.Client(
+            base_url=self.task.azure_endpoint, api_key=self.task.api_key
         )
 
-        self.log(f"client response start")
-        logger.info(response.text)
-
-        if response.status_code == 200:
-            for line in response.iter_lines():
-                if line:
-                    chunk = json.loads(line)
-                    self.request.response += line
-                    logger.info(chunk)
-        else:
-            logger.error(response)
-
-        self.log(f"loop stream end")
-        return
-        client = AzureOpenAI(
-            api_version=self.task.api_version,
-            azure_endpoint=self.task.azure_endpoint,
-            azure_deployment=self.task.deployment_name,
-            api_key=self.task.api_key,
-            timeout=self.task.timeout / 1000,
-        )
-
+        self.log(f"client request start")
         response = client.chat.completions.create(
-            messages=self.task.messages_loads,
             model=self.task.model_id,
-            stream=self.stream,
+            messages=self.task.messages_loads,
             temperature=self.task.temperature,
-            max_tokens=self.task.content_length,
+            max_tokens=self.task.max_tokens,
+            stream=True,
         )
 
-        if not self.stream:
-            self.request.response = response.choices[0].message.content
-
-            self.request.first_token_latency_ms = so_far_ms(self.request.start_req_time)
-
-            self.request.request_latency_ms = so_far_ms(self.request.start_req_time)
-
-            self.request.chunks_count = 1
-
-            self.request.output_token_count = self.encode(self.request.response)
-
+        self.log(f"loop stream start")
         if self.stream:
             for chunk in response:
                 if len(chunk.choices) == 0:
@@ -536,4 +493,5 @@ class TaskRuntime:
 
                 chunk_enqueue(self.redis, task_chunk)
 
+        self.log(f"loop stream end")
         client.close()

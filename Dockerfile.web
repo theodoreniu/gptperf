@@ -5,6 +5,7 @@ RUN apt-get update && \
     build-essential \
     g++ \
     python3-dev \
+    fonts-wqy-microhei \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

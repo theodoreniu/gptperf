@@ -1,7 +1,6 @@
 import os
 import uuid
 from datetime import datetime
-import redis
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session
 from sqlalchemy import create_engine
@@ -57,13 +56,6 @@ def create_db():
 def check_username(s):
     pattern = r"^[a-z][a-z0-9.]*$"
     return bool(re.match(pattern, s))
-
-
-def redis_client() -> redis.Redis:
-    host = os.getenv("REDIS_HOST", "localhost")
-    port = os.getenv("REDIS_PORT", 6379)
-    pwd = os.getenv("REDIS_PWD", "")
-    return redis.Redis(host=host, port=port, db=0)
 
 
 def so_far_ms(time):

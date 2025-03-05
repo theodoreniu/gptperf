@@ -1,5 +1,5 @@
-from helper import redis_client
 from tables import Tasks
+from task_cache import TaskCache
 from task_runtime import TaskRuntime
 from theodoretools.bot import feishu_text
 from concurrent.futures import ThreadPoolExecutor
@@ -7,9 +7,11 @@ from logger import logger
 from config import APP_URL
 
 
-def safe_create_and_run_task(task: Tasks, thread_num: int, request_index: int, redis):
+def safe_create_and_run_task(
+    task: Tasks, thread_num: int, request_index: int, cache: TaskCache
+):
     task_runtime = TaskRuntime(
-        task=task, thread_num=thread_num, request_index=request_index, redis=redis
+        task=task, thread_num=thread_num, request_index=request_index, cache=cache
     )
     task_runtime.latency()
 
@@ -21,7 +23,7 @@ def task_executor(task: Tasks):
             f"start to run {task.name}: {APP_URL}/?task_id={task.id}", task.feishu_token
         )
 
-    redis = redis_client()
+    cache = TaskCache()
 
     try:
         with ThreadPoolExecutor(max_workers=task.threads) as executor:
@@ -31,7 +33,7 @@ def task_executor(task: Tasks):
                     task,
                     thread_index + 1,
                     request_index + 1,
-                    redis,
+                    cache,
                 )
                 for thread_index in range(task.threads)
                 for request_index in range(task.request_per_thread)
@@ -47,4 +49,4 @@ def task_executor(task: Tasks):
         logger.error(f"Task Error: {e}", exc_info=True)
         raise e
     finally:
-        redis.close()
+        cache.close()

@@ -1,10 +1,8 @@
 import traceback
 from dotenv import load_dotenv
 import httpx
-import redis
 import tiktoken
 from helper import pad_number, so_far_ms, time_now
-from serialize import request_enqueue
 from config import (
     MODEL_TYPE_API,
     MODEL_TYPE_AOAI,
@@ -22,12 +20,12 @@ from logger import logger
 from openai import AzureOpenAI
 from azure.ai.inference import ChatCompletionsClient
 from azure.core.credentials import AzureKeyCredential
-from serialize import chunk_enqueue, log_enqueue
 from ollama import Client
-from task_loads import find_task
 import threading
 import uuid
 import openai
+
+from task_cache import TaskCache
 
 load_dotenv()
 
@@ -35,13 +33,13 @@ load_dotenv()
 class TaskRuntime:
 
     def __init__(
-        self, task: Tasks, thread_num: int, request_index: int, redis: redis.Redis
+        self, task: Tasks, thread_num: int, request_index: int, cache: TaskCache
     ):
         self.task = task
         self.last_token_time = None
         self.thread_num = thread_num
         self.request_index = request_index
-        self.redis = redis
+        self.cache = cache
         self.stream = False if self.task.model_id in NOT_SUPPORT_STREAM_MODELS else True
         self.Chunks = create_chunk_table_class(task.id)
         self.Logs = create_log_table_class(task.id)
@@ -70,7 +68,7 @@ class TaskRuntime:
             log_data=log_data,
             created_at=time_now(),
         )
-        log_enqueue(self.redis, log_item)
+        self.cache.log_enqueue(log_item)
 
     def run_with_timeout(self, method, timeout):
         event = threading.Event()
@@ -142,11 +140,11 @@ class TaskRuntime:
     def latency(self):
 
         try:
-            task = find_task(self.task.id)
-            if not task:
+            task_status = self.cache.get_task(self.task.id)
+            if not task_status:
                 raise Exception("Task not found or was deleted")
 
-            if task.status == 5:
+            if int(task_status) == 5:
                 raise Exception("Task was stopped")
 
             self.request.input_token_count = self.num_tokens_from_messages()
@@ -189,7 +187,7 @@ class TaskRuntime:
             logger.error(f"Error: {e}", exc_info=True)
         finally:
             self.request.completed_at = time_now()
-            request_enqueue(self.redis, self.request)
+            self.cache.request_enqueue(self.request)
 
     def request_ds_ollama(self):
         self.log(f"client init start")
@@ -262,7 +260,7 @@ class TaskRuntime:
                 last_token_latency_ms=last_token_latency_ms,
             )
 
-            chunk_enqueue(self.redis, chunk_item)
+            self.cache.chunk_enqueue(chunk_item)
 
         self.log(f"loop stream end")
 
@@ -330,7 +328,7 @@ class TaskRuntime:
                     last_token_latency_ms=last_token_latency_ms,
                 )
 
-                chunk_enqueue(self.redis, task_chunk)
+                self.cache.chunk_enqueue(task_chunk)
 
         self.log(f"loop stream end")
         client.close()
@@ -421,7 +419,7 @@ class TaskRuntime:
                     request_latency_ms=so_far_ms(self.request.start_req_time),
                 )
 
-                chunk_enqueue(self.redis, task_chunk)
+                self.cache.chunk_enqueue(task_chunk)
 
         self.log(f"loop stream end")
         client.close()
@@ -490,7 +488,7 @@ class TaskRuntime:
                     request_latency_ms=so_far_ms(self.request.start_req_time),
                 )
 
-                chunk_enqueue(self.redis, task_chunk)
+                self.cache.chunk_enqueue(task_chunk)
 
         self.log(f"loop stream end")
         client.close()

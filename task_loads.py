@@ -1,9 +1,8 @@
-import hashlib
 from typing import List
 from sqlalchemy import text
 from dotenv import load_dotenv
 import streamlit_authenticator as stauth
-from helper import get_mysql_session, redis_client
+from helper import get_mysql_session
 from tables import (
     Users,
     create_chunk_table_class,
@@ -14,6 +13,8 @@ from tables import Tasks
 import streamlit as st
 from logger import logger
 import copy
+
+from task_cache import TaskCache
 
 load_dotenv()
 
@@ -118,6 +119,8 @@ def delete_task(task: Tasks):
         task = session.query(Tasks).filter(Tasks.id == task.id).first()
         session.delete(task)
         session.commit()
+        cache = TaskCache()
+        cache.delete_task(task.id)
     except Exception as e:
         session.rollback()
         logger.error(f"Error: {e}")
@@ -225,6 +228,8 @@ def run_task(task_id: int):
         task.request_failed = 0
         task.request_succeed = 0
         session.commit()
+        cache = TaskCache()
+        cache.update_task_status(task.id, 2)
     except Exception as e:
         session.rollback()
         logger.error(f"Error: {e}")
@@ -252,20 +257,8 @@ def stop_task(task: Tasks):
         task = session.query(Tasks).filter(Tasks.id == task.id).first()
         task.status = 5
         session.commit()
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error: {e}")
-    finally:
-        session.close()
-
-
-def succeed_task(task: Tasks):
-    session = get_mysql_session()
-    try:
-        task = session.query(Tasks).filter(Tasks.id == task.id).first()
-        task.status = 4
-        task.error_message = ""
-        session.commit()
+        cache = TaskCache()
+        cache.update_task_status(task.id, 5)
     except Exception as e:
         session.rollback()
         logger.error(f"Error: {e}")

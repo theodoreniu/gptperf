@@ -3,7 +3,7 @@ import streamlit as st
 from dotenv import load_dotenv
 from helper import format_milliseconds, get_mysql_session, task_status_icon
 from page_task_edit import task_form
-from serialize import chunk_len
+from task_cache import TaskCache
 from tables import Tasks
 from task_count import task_count
 from task_metrics import task_metrics
@@ -159,7 +159,8 @@ def render_metrics(task):
         try:
             data = task_metrics(task)
             df = pd.DataFrame.from_dict(data, orient="index")
-            queue_len = chunk_len()
+            cache = TaskCache()
+            queue_len = cache.len()
             st.markdown("## 📊 Metrics")
             st.markdown(f"Name: `{task.name}`")
             if queue_len > 0:

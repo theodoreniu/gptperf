@@ -5,7 +5,8 @@ from helper import format_milliseconds, get_mysql_session, task_status_icon
 from page_task_edit import task_form
 from serialize import chunk_len
 from tables import Tasks
-from metrics import task_metrics
+from task_count import task_count
+from task_metrics import task_metrics
 from task_diff import diff_tasks
 from task_loads import current_user, is_admin, load_all_requests, load_all_tasks
 from logger import logger
@@ -54,13 +55,26 @@ def task_page(task_id: int):
 
     if task.status > 1:
         requests = load_all_requests(task.id)
-        display_metrics(task)
+        render_count(task)
+        render_metrics(task)
         render_charts(requests)
         render_requests(task, requests, 0, "❌ Failed Requests")
         render_requests(task, requests, 1, "✅ Succeed Requests")
 
     if task.status == 4:
         diff_tasks_page(task)
+
+
+def render_count(task):
+    counts = task_count(task)
+    if counts:
+        st.markdown("## 🪧 Overview")
+        with st.container(border=True):
+            for count in counts:
+                st.write(f"{count}: `{counts[count]}`")
+
+            st.write(f"Request Failed: `{task.request_failed}`")
+            st.write(f"Request Succeed: `{task.request_succeed}`")
 
 
 def diff_tasks_page(current_task: Tasks):
@@ -112,30 +126,34 @@ def render_charts(requests):
             st.markdown("## 📉 Charts")
 
         if len(first_token_latency_ms_array) > 0:
-            st.markdown("#### First Token Latency")
-            st.line_chart(
-                pd.DataFrame(
-                    first_token_latency_ms_array,
-                    columns=["First Token Latency"],
+            with st.container(border=True):
+                st.markdown("#### First Token Latency")
+                st.line_chart(
+                    pd.DataFrame(
+                        first_token_latency_ms_array,
+                        columns=["First Token Latency"],
+                    )
                 )
-            )
 
         if len(request_latency_ms_array) > 0:
-            st.markdown("#### Request Latency")
-            st.line_chart(
-                pd.DataFrame(request_latency_ms_array, columns=["Request Latency"])
-            )
+            with st.container(border=True):
+                st.markdown("#### Request Latency")
+                st.line_chart(
+                    pd.DataFrame(request_latency_ms_array, columns=["Request Latency"])
+                )
 
         if len(chunks_count_array) > 0:
-            st.markdown("#### Chunks Count / Output Token Count")
-            st.bar_chart(
-                pd.DataFrame(
-                    chunks_count_array, columns=["Chunks Count", "Output Token Count"]
+            with st.container(border=True):
+                st.markdown("#### Chunks Count / Output Token Count")
+                st.bar_chart(
+                    pd.DataFrame(
+                        chunks_count_array,
+                        columns=["Chunks Count", "Output Token Count"],
+                    )
                 )
-            )
 
 
-def display_metrics(task):
+def render_metrics(task):
     """Display task metrics and queue information."""
     with st.spinner(text="Loading Report..."):
         try:

@@ -45,9 +45,10 @@ def diff_tasks(
         st.error("The number of requests is not the same")
         return
 
-    compare_latency(task_diff1, task_diff2, compare_field)
-    analyze_latency_improvement(task_diff1, task_diff2, compare_field)
-    plot_trend_lines(task_diff1, task_diff2, compare_field)
+    with st.container(border=True):
+        compare_latency(task_diff1, task_diff2, compare_field)
+        analyze_latency_improvement(task_diff1, task_diff2, compare_field)
+        plot_trend_lines(task_diff1, task_diff2, compare_field)
 
 
 def analyze_latency_improvement(task1: DiffTask, task2: DiffTask, compare_field: str):
@@ -121,7 +122,7 @@ def compare_latency(task1: DiffTask, task2: DiffTask, compare_field: str):
 
     st.write("## 逐请求比较结果")
     st.write(
-        f"`{task1.task.name}` 和 `{task2.task.name}` 每个 `{compare_field}` 的改进情况："
+        f"`{task1.task.name}` 和 `{task2.task.name}` 的 `{compare_field}` 的改进情况："
     )
     for key, value in stats_summary.items():
         st.write(f"{key}: `{value:.2f}`" if not np.isnan(value) else f"{key}: N/A")

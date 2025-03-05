@@ -353,7 +353,6 @@ class TaskRuntime:
                 messages=self.task.messages_loads,
                 model=self.task.model_id,
                 stream=self.stream,
-                temperature=self.task.temperature,
                 max_completion_tokens=self.task.max_tokens,
             )
         else:

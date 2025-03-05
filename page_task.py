@@ -85,7 +85,7 @@ def diff_tasks_page(current_task: Tasks):
 
         options = ["NONE"]
         for task in tasks:
-            options.append(f"{task.id} - {task.name}")
+            options.append(f"{task.id} - {task.name} ({task.model_id})")
 
         col1, col2 = st.columns(2)
         with col1:

@@ -1,8 +1,9 @@
+import hashlib
 from typing import List
 from sqlalchemy import text
 from dotenv import load_dotenv
 import streamlit_authenticator as stauth
-from helper import get_mysql_session
+from helper import get_mysql_session, redis_client
 from tables import (
     Users,
     create_chunk_table_class,
@@ -70,9 +71,9 @@ def load_all_users() -> List[Users]:
 
 def sql_query(sql: str):
     session = get_mysql_session()
-    session.execute(text(sql))
     result = session.execute(text(sql))
     session.close()
+
     return result
 
 

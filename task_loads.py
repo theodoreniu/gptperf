@@ -10,11 +10,9 @@ from tables import (
     create_log_table_class,
 )
 from tables import Tasks
-from sqlalchemy import update
 import streamlit as st
 from logger import logger
 import copy
-from sqlalchemy.sql import func
 
 load_dotenv()
 
@@ -158,45 +156,6 @@ def update_task(task_update: Tasks, messages: list):
         session.close()
 
 
-def add_request(request):
-    session = get_mysql_session()
-    try:
-        new_request = copy.deepcopy(request)
-        session.add(new_request)
-        session.commit()
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error: {e}")
-    finally:
-        session.close()
-
-
-def add_chunk(chunk):
-    session = get_mysql_session()
-    try:
-        new_chunk = copy.deepcopy(chunk)
-        session.add(new_chunk)
-        session.commit()
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error: {e}")
-    finally:
-        session.close()
-
-
-def add_log(log):
-    session = get_mysql_session()
-    try:
-        new_log = copy.deepcopy(log)
-        session.add(new_log)
-        session.commit()
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error: {e}")
-    finally:
-        session.close()
-
-
 def add_user(user: Users):
     session = get_mysql_session()
     try:
@@ -290,38 +249,6 @@ def stop_task(task: Tasks):
     try:
         task = session.query(Tasks).filter(Tasks.id == task.id).first()
         task.status = 5
-        session.commit()
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error: {e}")
-    finally:
-        session.close()
-
-
-def task_request_succeed(task_id: int):
-    session = get_mysql_session()
-    try:
-        session.execute(
-            update(Tasks)
-            .where(Tasks.id == task_id)
-            .values(request_succeed=Tasks.request_succeed + 1)
-        )
-        session.commit()
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error: {e}")
-    finally:
-        session.close()
-
-
-def task_request_failed(task_id: int):
-    session = get_mysql_session()
-    try:
-        session.execute(
-            update(Tasks)
-            .where(Tasks.id == task_id)
-            .values(request_failed=Tasks.request_failed + 1)
-        )
         session.commit()
     except Exception as e:
         session.rollback()

@@ -8,7 +8,6 @@ from tables import Tasks
 from metrics import task_metrics
 from task_loads import current_user, is_admin, load_all_requests
 from logger import logger
-import numpy as np
 
 
 load_dotenv()

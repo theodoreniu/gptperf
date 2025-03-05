@@ -1,10 +1,17 @@
 import traceback
 from dotenv import load_dotenv
+import httpx
 import redis
 import tiktoken
 from helper import pad_number, so_far_ms, time_now
 from serialize import request_enqueue
-from config import MODEL_TYPE_API, aoai, ds, ds_foundry, not_support_stream
+from config import (
+    MODEL_TYPE_API,
+    MODEL_TYPE_AOAI,
+    MODEL_TYPE_DS_OLLAMA,
+    MODEL_TYPE_DS_FOUNDRY,
+    NOT_SUPPORT_STREAM_MODELS,
+)
 from tables import (
     Tasks,
     create_chunk_table_class,
@@ -36,7 +43,7 @@ class TaskRuntime:
         self.thread_num = thread_num
         self.request_index = request_index
         self.redis = redis
-        self.stream = False if self.task.model_id in not_support_stream else True
+        self.stream = False if self.task.model_id in NOT_SUPPORT_STREAM_MODELS else True
         self.Chunks = create_chunk_table_class(task.id)
         self.Logs = create_log_table_class(task.id)
 
@@ -69,25 +76,41 @@ class TaskRuntime:
     def run_with_timeout(self, method, timeout):
         event = threading.Event()
         error_info = None
+        logger.info(f"Starting method {method.__name__} with timeout {timeout} seconds")
 
         def target():
             nonlocal error_info
             try:
+                logger.info(f"Method {method.__name__} started")
                 method()
+                logger.info(f"Method {method.__name__} completed successfully")
             except Exception as e:
                 error_info = traceback.format_exc()
+                logger.error(f"Error in Method {method.__name__}: {error_info}")
             finally:
                 event.set()
+                logger.info(f"Method finished for {method.__name__}")
 
         thread = threading.Thread(target=target)
         thread.start()
+        logger.info(
+            f"Waiting for Method {method.__name__} with timeout {timeout} seconds"
+        )
 
         event.wait(timeout)
 
         if thread.is_alive():
-            raise TimeoutError(f"Timeout occurred while executing {method.__name__}")
+            logger.error(
+                f"Timeout occurred while executing Method {method.__name__} after {timeout} seconds"
+            )
+            raise TimeoutError(
+                f"Timeout occurred while executing Method {method.__name__}"
+            )
         elif error_info:
-            raise Exception(f"An error occurred in {method.__name__}:\n{error_info}")
+            logger.error(f"An error occurred in Method {method.__name__}: {error_info}")
+            raise Exception(
+                f"An error occurred in Method {method.__name__}:\n{error_info}"
+            )
 
     def num_tokens_from_messages(self):
         tokens_per_message = 3
@@ -107,7 +130,7 @@ class TaskRuntime:
         try:
             encoding = tiktoken.get_encoding("cl100k_base")
 
-            if self.task.model_type == aoai:
+            if self.task.model_type == MODEL_TYPE_AOAI:
                 encoding = tiktoken.encoding_for_model(self.task.model_id)
             else:
                 encoding = tiktoken.encoding_for_model("gpt-4o")
@@ -125,21 +148,26 @@ class TaskRuntime:
                 raise Exception("Task not found or was deleted")
 
             if task.status == 5:
-                raise Exception("Task stoped")
+                raise Exception("Task was stopped")
 
             self.request.input_token_count = self.num_tokens_from_messages()
 
             self.request.start_req_time = time_now()
 
             timeout = self.task.timeout / 1000
-            if self.task.model_type == aoai:
-                self.run_with_timeout(self.request_aoai, timeout)
-            elif self.task.model_type == ds:
-                self.run_with_timeout(self.request_ds, timeout)
-            elif self.task.model_type == ds_foundry:
+
+            if self.task.model_type == MODEL_TYPE_AOAI:
+                self.request_aoai()
+
+            elif self.task.model_type == MODEL_TYPE_DS_OLLAMA:
+                self.request_ds_ollama()
+
+            elif self.task.model_type == MODEL_TYPE_DS_FOUNDRY:
                 self.run_with_timeout(self.request_ds_foundry, timeout)
+
             elif self.task.model_type == MODEL_TYPE_API:
                 self.run_with_timeout(self.request_api, timeout)
+
             else:
                 raise Exception(f"Model type {self.task.model_type} not supported")
 
@@ -154,9 +182,7 @@ class TaskRuntime:
             self.request.success = 1
         except TimeoutError as e:
             self.request.success = 0
-            self.request.response = (
-                f"No response within the limited time: {self.task.timeout} ms"
-            )
+            self.request.response = f"timeout: {self.task.timeout} ms"
             logger.error(f"Timeout Error: {e}", exc_info=True)
         except Exception as e:
             self.request.success = 0
@@ -166,12 +192,13 @@ class TaskRuntime:
             self.request.completed_at = time_now()
             request_enqueue(self.redis, self.request)
 
-    def request_ds(self):
+    def request_ds_ollama(self):
         self.log(f"client init start")
+
         client = Client(
             host=self.task.azure_endpoint,
             headers={"api-key": self.task.api_key if self.task.api_key else ""},
-            timeout=self.task.timeout / 1000,
+            timeout=httpx.Timeout(self.task.timeout / 1000),
         )
 
         self.log(f"client request start")
@@ -240,6 +267,7 @@ class TaskRuntime:
 
     def request_ds_foundry(self):
         self.log(f"client init start")
+
         client = ChatCompletionsClient(
             endpoint=self.task.azure_endpoint,
             credential=AzureKeyCredential(self.task.api_key),
@@ -252,7 +280,7 @@ class TaskRuntime:
             max_tokens=self.task.content_length,
             model=self.task.model_id,
             temperature=self.task.temperature,
-            timeout=self.task.timeout / 1000,
+            timeout=httpx.Timeout(self.task.timeout / 1000),
         )
 
         self.log(f"loop stream start")
@@ -313,7 +341,7 @@ class TaskRuntime:
             azure_endpoint=self.task.azure_endpoint,
             azure_deployment=self.task.deployment_name,
             api_key=self.task.api_key,
-            timeout=self.task.timeout / 1000,
+            timeout=httpx.Timeout(self.task.timeout / 1000),
         )
 
         self.log(f"client request start")
@@ -370,7 +398,7 @@ class TaskRuntime:
                 token_len = 0
                 characters_len = 0
                 if content:
-                    logger.info(content)
+                    # logger.info(content)
 
                     self.request.response += content
 
@@ -415,7 +443,7 @@ class TaskRuntime:
             headers=headers,
             data=json.dumps(data),
             stream=True,
-            timeout=self.task.timeout / 1000,
+            timeout=httpx.Timeout(self.task.timeout / 1000),
         )
 
         self.log(f"client response start")

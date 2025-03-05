@@ -42,15 +42,18 @@ def request_page(task_id: int, request_id: str):
 
     st.markdown(f"## 🌍 Request `{request.id}`")
     with st.container(border=True):
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.markdown(f"user_id: `{request.user_id}`")
-        with col2:
-            st.markdown(f"task_id: `{request.task_id}`")
-        with col3:
-            st.markdown(f"success: `{request.success}`")
+        col1, col2, col3, col4 = st.columns(4)
 
-        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.markdown(f"task_id: `{request.task_id}`")
+        with col2:
+            st.markdown(f"success: `{request.success}`")
+        with col3:
+            st.markdown(f"thread_num: `{request.thread_num}`")
+        with col4:
+            st.markdown(f"request_index: `{request.request_index}`")
+
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.markdown(f"input_token_count: `{request.input_token_count}`")
         with col2:
@@ -58,33 +61,25 @@ def request_page(task_id: int, request_id: str):
         with col3:
             st.markdown(f"chunks_count: `{request.chunks_count}`")
 
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.markdown(
                 f"Time To First Token (TTFT): `{request.first_token_latency_ms}`"
             )
         with col2:
-            st.markdown(f"last_token_latency_ms: `{request.last_token_latency_ms}`")
+            st.markdown(f"Time between Token (TBT): `{request.last_token_latency_ms}`")
         with col3:
             st.markdown(f"request_latency_ms: `{request.request_latency_ms}`")
 
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.markdown(f"thread_num: `{request.thread_num}`")
-        with col2:
-            st.markdown(f"request_index: `{request.request_index}`")
-
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.markdown(f"created_at_fmt: `{request.created_at_fmt}`")
         with col2:
-            st.markdown(f"completed_at_fmt: `{request.completed_at_fmt}`")
-
-        col1, col2, col3 = st.columns(3)
-        with col1:
             st.markdown(f"start_req_time_fmt: `{request.start_req_time_fmt}`")
-        with col2:
+        with col3:
             st.markdown(f"end_req_time_fmt: `{request.end_req_time_fmt}`")
+        with col4:
+            st.markdown(f"completed_at_fmt: `{request.completed_at_fmt}`")
 
         st.markdown("input:")
         st.text_area(

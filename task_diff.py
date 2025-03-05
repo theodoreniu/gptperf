@@ -6,8 +6,17 @@ from task_loads import find_task, load_all_requests
 import numpy as np
 import scipy.stats as stats
 import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
 
 load_dotenv()
+
+font_path = "SimHei.ttf"
+font_prop = fm.FontProperties(fname=font_path)
+
+
+plt.rcParams["font.family"] = font_prop.get_name()
+plt.rcParams["font.size"] = 12
+plt.rcParams["axes.unicode_minus"] = False
 
 
 class DiffTask:
@@ -41,9 +50,9 @@ def diff_tasks(
         st.error("No requests found for the task")
         return
 
-    if len(task_diff1.requests) != len(task_diff2.requests):
-        st.error("The number of requests is not the same")
-        return
+    # if len(task_diff1.requests) != len(task_diff2.requests):
+    #     st.error("The number of requests is not the same")
+    #     return
 
     st.markdown(
         f"Click to view task: [`{task_diff2.task.name}`](/?task_id={task_diff2.task.id})",
@@ -82,7 +91,7 @@ def analyze_latency_improvement(task1: DiffTask, task2: DiffTask, compare_field:
     plt.figure(figsize=(12, 6))
     plt.hist(data1, bins=30, alpha=0.5, label=task1.task.name, color="blue")
     plt.hist(data2, bins=30, alpha=0.5, label=task2.task.name, color="orange")
-    plt.title(f"{compare_field}")
+    plt.title(f"{compare_field}", fontproperties=font_prop)
     plt.xlabel("Latency (ms)")
     plt.ylabel("Frequency")
     plt.legend()
@@ -127,7 +136,7 @@ def compare_latency(task1: DiffTask, task2: DiffTask, compare_field: str):
 
     st.write("## 逐请求比较结果")
     st.write(
-        f"`{task1.task.name}` 和 `{task2.task.name}` 的 `{compare_field}` 的改进情况："
+        f"`{task2.task.name}` 相对于 `{task1.task.name}` 的 `{compare_field}` 的改进情况："
     )
     for key, value in stats_summary.items():
         st.write(f"{key}: `{value:.2f}`" if not np.isnan(value) else f"{key}: N/A")
@@ -155,7 +164,7 @@ def plot_trend_lines(task1: DiffTask, task2: DiffTask, compare_field: str):
         marker="o",
         markersize=3,
     )
-    plt.title(f"{compare_field} Trend")
+    plt.title(f"{compare_field} Trend", fontproperties=font_prop)
     plt.xlabel("Request Number")
     plt.ylabel(f"{compare_field} (ms)")
     plt.legend()

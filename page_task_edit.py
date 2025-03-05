@@ -19,12 +19,12 @@ from config import (
     MESSAGE_TYPES,
     MESSAGE_VISION,
     MODEL_TYPE_API,
-    aoai,
-    ds,
-    ds_foundry,
-    ds_models,
-    aoai_models,
-    model_types,
+    MODEL_TYPE_AOAI,
+    MODEL_TYPE_DS_OLLAMA,
+    MODEL_TYPE_DS_FOUNDRY,
+    MODEL_TYPE_DS_MODELS,
+    MODEL_TYPE_AOAI_MODELS,
+    MODEL_TYPES,
 )
 
 from template_complete import template_complete
@@ -54,14 +54,17 @@ def create_update(task: Tasks, edit: bool, messages: list):
         if not task.azure_endpoint:
             st.error("endpoint is required.")
             return
-        if task.model_type == aoai:
+        if task.model_type == MODEL_TYPE_AOAI:
             if not task.api_version:
                 st.error("api_version is required.")
                 return
             if not task.deployment_name:
                 st.error("deployment_name is required.")
                 return
-        if task.model_type in (aoai, ds_foundry) and not task.api_key:
+        if (
+            task.model_type in (MODEL_TYPE_AOAI, MODEL_TYPE_DS_FOUNDRY)
+            and not task.api_key
+        ):
             st.error("api_key is required.")
             return
 
@@ -153,22 +156,22 @@ def task_form(task: Tasks, edit: bool = False):
     with col1:
         task.model_type = st.selectbox(
             label="💡 Model Type",
-            options=model_types,
-            index=model_types.index(task.model_type) if task.model_type else 0,
+            options=MODEL_TYPES,
+            index=MODEL_TYPES.index(task.model_type) if task.model_type else 0,
         )
     with col2:
-        if task.model_type == aoai:
+        if task.model_type == MODEL_TYPE_AOAI:
             task.azure_endpoint = st.text_input(
                 label="Azure Endpoint",
                 value=task.azure_endpoint,
                 placeholder="https://xxx.openai.azure.com",
             )
-        if task.model_type == ds:
+        if task.model_type == MODEL_TYPE_DS_OLLAMA:
             task.azure_endpoint = st.text_input(
                 label="Endpoint",
                 value=task.azure_endpoint,
             )
-        if task.model_type == ds_foundry:
+        if task.model_type == MODEL_TYPE_DS_FOUNDRY:
             task.azure_endpoint = st.text_input(
                 label="Endpoint",
                 value=task.azure_endpoint,
@@ -181,27 +184,27 @@ def task_form(task: Tasks, edit: bool = False):
                 placeholder="http://6.6.6.6:8080/v1/completions",
             )
     with col3:
-        if task.model_type == aoai:
+        if task.model_type == MODEL_TYPE_AOAI:
             task.model_id = st.selectbox(
                 label="Model ID",
-                options=aoai_models,
+                options=MODEL_TYPE_AOAI_MODELS,
                 index=(
-                    aoai_models.index(task.model_id)
-                    if task.model_id and task.model_id in aoai_models
+                    MODEL_TYPE_AOAI_MODELS.index(task.model_id)
+                    if task.model_id and task.model_id in MODEL_TYPE_AOAI_MODELS
                     else 0
                 ),
             )
-        if task.model_type == ds:
+        if task.model_type == MODEL_TYPE_DS_OLLAMA:
             task.model_id = st.selectbox(
                 label="Model ID",
-                options=ds_models,
+                options=MODEL_TYPE_DS_MODELS,
                 index=(
-                    ds_models.index(task.model_id)
-                    if task.model_id and task.model_id in ds_models
+                    MODEL_TYPE_DS_MODELS.index(task.model_id)
+                    if task.model_id and task.model_id in MODEL_TYPE_DS_MODELS
                     else 0
                 ),
             )
-        if task.model_type == ds_foundry:
+        if task.model_type == MODEL_TYPE_DS_FOUNDRY:
             task.model_id = st.text_input(
                 label="Model ID",
                 value=task.model_id,
@@ -212,12 +215,12 @@ def task_form(task: Tasks, edit: bool = False):
                 value=task.model_id,
             )
     with col4:
-        if task.model_type == aoai:
+        if task.model_type == MODEL_TYPE_AOAI:
             task.deployment_name = st.text_input(
                 label="Deployment Name",
                 value=task.deployment_name,
             )
-        if task.model_type == ds:
+        if task.model_type == MODEL_TYPE_DS_OLLAMA:
             task.enable_think = st.selectbox(
                 label="Enable Think",
                 options=[True, False],
@@ -226,7 +229,7 @@ def task_form(task: Tasks, edit: bool = False):
                 ),
             )
     with col5:
-        if task.model_type == aoai:
+        if task.model_type == MODEL_TYPE_AOAI:
             task.api_version = st.text_input(
                 label="API Version",
                 value=task.api_version,

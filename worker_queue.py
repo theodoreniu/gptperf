@@ -1,23 +1,20 @@
 from time import sleep
-from helper import redis_client
+from helper import get_mysql_session, redis_client
 from serialize import chunk_dequeue, request_dequeue, log_dequeue
 from logger import logger
+from tables import Tasks
 from task_loads import (
-    add_chunk,
-    add_request,
-    add_log,
     error_task,
-    find_task,
     succeed_task,
-    task_request_failed,
-    task_request_succeed,
 )
 from theodoretools.bot import feishu_text
-from config import app_url
+from config import APP_URL
+import copy
+from sqlalchemy import update
 
 
-def check_status(task_id: int):
-    task = find_task(task_id)
+def check_status(session, task_id: int):
+    task = session.query(Tasks).filter(Tasks.id == task_id).first()
 
     target_requests = task.request_per_thread * task.threads
     total_requested = task.request_succeed + task.request_failed
@@ -26,7 +23,7 @@ def check_status(task_id: int):
         error_task(task, "All requests failed")
         if task.feishu_token:
             feishu_text(
-                f"All requests failed task: {task.name}: {app_url}/?task_id={task.id}",
+                f"All requests failed task: {task.name}: {APP_URL}/?task_id={task.id}",
                 task.feishu_token,
             )
         return
@@ -35,7 +32,7 @@ def check_status(task_id: int):
         succeed_task(task)
         if task.feishu_token:
             feishu_text(
-                f"Task {task.name} succeed: {app_url}/?task_id={task.id}",
+                f"Task {task.name} succeed: {APP_URL}/?task_id={task.id}",
                 task.feishu_token,
             )
         return
@@ -43,37 +40,54 @@ def check_status(task_id: int):
 
 if __name__ == "__main__":
 
-    while True:
+    session = get_mysql_session()
+    redis = redis_client()
 
-        redis = redis_client()
+    while True:
 
         try:
             chunk = chunk_dequeue(redis)
             if chunk:
                 # logger.info(chunk.__dict__)
-                add_chunk(chunk)
+                session.add(copy.deepcopy(chunk))
+                session.commit()
 
             log = log_dequeue(redis)
             if log:
                 # logger.info(log.__dict__)
-                add_log(log)
+                session.add(copy.deepcopy(log))
+                session.commit()
 
             request = request_dequeue(redis)
             if request:
                 # logger.info(request.__dict__)
-                add_request(request)
+                session.add(copy.deepcopy(request))
+                session.commit()
 
                 if request.success == 1:
-                    task_request_succeed(request.task_id)
+                    session.execute(
+                        update(Tasks)
+                        .where(Tasks.id == request.task_id)
+                        .values(request_succeed=Tasks.request_succeed + 1)
+                    )
+                    session.commit()
                 else:
-                    task_request_failed(request.task_id)
+                    session.execute(
+                        update(Tasks)
+                        .where(Tasks.id == request.task_id)
+                        .values(request_failed=Tasks.request_failed + 1)
+                    )
+                    session.commit()
 
-                check_status(request.task_id)
+                check_status(session, request.task_id)
 
             if not chunk and not request:
                 sleep(1)
 
         except Exception as e:
             logger.error(f"Error: {e}", exc_info=True)
-        finally:
+            session.rollback()
+            session.close()
             redis.close()
+            session = get_mysql_session()
+            redis = redis_client()

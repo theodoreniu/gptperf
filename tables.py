@@ -1,4 +1,3 @@
-import json
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import (
     Column,
@@ -17,7 +16,6 @@ from sqlalchemy import create_engine
 from helper import sql_string
 import streamlit as st
 from sqlalchemy import text
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import threading
 from config import DEFAULT_MESSAGES_COMPLETE
@@ -105,7 +103,7 @@ class Tasks(Base):
         if self.status == 4:
             return "Completed"
         if self.status == 5:
-            return "Stoped"
+            return "Stopped"
         return "N/A"
 
 

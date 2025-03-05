@@ -16,6 +16,7 @@ services:
       - "9876:9876"
     depends_on:
       - mysql
+      - redis
     networks:
       - app-network
 
@@ -29,6 +30,7 @@ services:
     working_dir: /app
     depends_on:
       - mysql
+      - redis
     networks:
       - app-network
 
@@ -57,6 +59,7 @@ services:
     image: mysql:latest
     environment:
       MYSQL_ROOT_PASSWORD: AIoqnh17a1
+      MAX_CONNECTIONS: 5000
     ports:
       - "3306:3306"
     volumes:

@@ -4,7 +4,7 @@ import numpy as np
 import streamlit as st
 from task_loads import sql_query
 from tables import Tasks
-from config import not_support_stream
+from config import NOT_SUPPORT_STREAM_MODELS
 from logger import logger
 
 
@@ -24,7 +24,7 @@ def report_number(sql_string: str, index: int):
         dict: Statistical metrics including percentiles, avg, min, max
     """
     try:
-        logger.info(sql_string)
+        # logger.info(sql_string)
 
         res = sql_query(sql_string)
 
@@ -64,7 +64,7 @@ def task_metrics(task: Tasks):
     Returns:
         dict: Collection of performance metrics
     """
-    stream = task.model_id not in not_support_stream
+    stream = task.model_id not in NOT_SUPPORT_STREAM_MODELS
 
     chunks = f"chunks_{task.id}"
     requests = f"requests_{task.id}"

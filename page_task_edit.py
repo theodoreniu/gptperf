@@ -110,7 +110,7 @@ def task_form(task: Tasks, edit: bool = False):
             help="Will send message to Feishu if set when task status changed",
         )
 
-    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
     with col1:
         task.threads = st.number_input(
             label="Concurrency",
@@ -142,8 +142,16 @@ def task_form(task: Tasks, edit: bool = False):
             max_value=204800,
         )
     with col5:
-        task.temperature = st.text_input(label="Temperature", value=task.temperature)
+        task.max_tokens = st.number_input(
+            label="Max Tokens",
+            value=task.max_tokens,
+            step=1,
+            min_value=1,
+            max_value=204800,
+        )
     with col6:
+        task.temperature = st.text_input(label="Temperature", value=task.temperature)
+    with col7:
         task.timeout = st.number_input(
             label="Timeout (ms)",
             value=task.timeout,

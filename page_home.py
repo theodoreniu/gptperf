@@ -39,6 +39,7 @@ def create_task():
         enable_think=True,
         created_at=time_now(),
         content_length=2048,
+        max_tokens=2048,
         temperature=0.8,
         timeout=30000,
         threads=1,

@@ -45,6 +45,11 @@ def diff_tasks(
         st.error("The number of requests is not the same")
         return
 
+    st.markdown(
+        f"Click to view task: [`{task_diff2.task.name}`](/?task_id={task_diff2.task.id})",
+        unsafe_allow_html=True,
+    )
+
     with st.container(border=True):
         compare_latency(task_diff1, task_diff2, compare_field)
         analyze_latency_improvement(task_diff1, task_diff2, compare_field)

@@ -228,9 +228,9 @@ def task_form(task: Tasks, edit: bool = False):
                 label="Deployment Name",
                 value=task.deployment_name,
             )
-        if task.model_type == MODEL_TYPE_DS_OLLAMA:
+        if task.model_type != MODEL_TYPE_AOAI:
             task.enable_think = st.selectbox(
-                label="Enable Think",
+                label="Enable Think (DeepSeek)",
                 options=[True, False],
                 index=(
                     [True, False].index(task.enable_think) if task.enable_think else 1

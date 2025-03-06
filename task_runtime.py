@@ -17,15 +17,17 @@ from tables import (
     create_request_table_class,
 )
 from logger import logger
-from openai import AzureOpenAI
+from openai import NOT_GIVEN, AzureOpenAI
 from azure.ai.inference import ChatCompletionsClient
 from azure.core.credentials import AzureKeyCredential
 from ollama import Client
 import threading
 import uuid
 import openai
-
+import requests
+import json
 from task_cache import TaskCache
+from openai.types.shared.response_format_json_schema import ResponseFormatJSONSchema
 
 load_dotenv()
 
@@ -82,8 +84,7 @@ class TaskRuntime:
                 method()
                 logger.info(f"Method {method.__name__} completed successfully")
             except Exception as e:
-                error_info = traceback.format_exc()
-                logger.error(f"Error in Method {method.__name__}: {error_info}")
+                raise e
             finally:
                 event.set()
                 logger.info(f"Method finished for {method.__name__}")
@@ -199,25 +200,14 @@ class TaskRuntime:
         )
 
         self.log(f"client request start")
-        stream = None
-
-        if self.task.enable_think:
-            stream = client.chat(
-                model=self.task.model_id,
-                messages=self.task.messages_loads,
-                stream=True,
-                options={"temperature": self.task.temperature},
-                max_tokens=self.task.max_tokens,
-            )
-        else:
-            stream = client.chat(
-                model=self.task.model_id,
-                messages=self.task.messages_loads,
-                stream=True,
-                format="json",
-                options={"temperature": self.task.temperature},
-                max_tokens=self.task.max_tokens,
-            )
+        stream = client.chat(
+            model=self.task.model_id,
+            messages=self.task.messages_loads,
+            stream=True,
+            options={"temperature": self.task.temperature},
+            max_tokens=self.task.max_tokens,
+            format=None if self.task.enable_think else "json",
+        )
 
         self.log(f"loop stream start")
         for chunk in stream:
@@ -273,14 +263,26 @@ class TaskRuntime:
         )
 
         self.log(f"client request start")
-        response = client.complete(
-            stream=True,
-            messages=self.task.messages_loads,
-            max_tokens=self.task.max_tokens,
-            model=self.task.model_id,
-            temperature=self.task.temperature,
-            timeout=httpx.Timeout(self.task.timeout / 1000),
-        )
+        response = None
+        if self.task.enable_think:
+            response = client.complete(
+                stream=True,
+                messages=self.task.messages_loads,
+                max_tokens=self.task.max_tokens,
+                model=self.task.model_id,
+                temperature=self.task.temperature,
+                timeout=self.task.timeout / 1000,
+            )
+        else:
+            response = client.complete(
+                stream=True,
+                messages=self.task.messages_loads,
+                max_tokens=self.task.max_tokens,
+                model=self.task.model_id,
+                temperature=self.task.temperature,
+                timeout=self.task.timeout / 1000,
+                output_format="json",
+            )
 
         self.log(f"loop stream start")
         for update in response:
@@ -427,6 +429,43 @@ class TaskRuntime:
     def request_api(self):
         self.log(f"client init start")
 
+        url = self.task.azure_endpoint
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.task.api_key}",
+        }
+
+        data = {
+            "model": self.task.model_id,
+            "messages": [
+                {"role": "developer", "content": "You are a helpful assistant."},
+                {
+                    "role": "user",
+                    "content": "Write a haiku about recursion in programming.",
+                },
+            ],
+            "stream": True,
+        }
+
+        try:
+            response = requests.post(
+                url, headers=headers, data=json.dumps(data), timeout=30
+            )
+
+            response.raise_for_status()
+
+            for line in response.iter_lines():
+                if line:
+
+                    result = json.loads(line.decode("utf-8"))
+                    logger.info(result)
+
+        except requests.exceptions.Timeout:
+            logger.error("请求超时")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"请求错误: {e}")
+
+        return
         client = openai.Client(
             base_url=self.task.azure_endpoint, api_key=self.task.api_key
         )
@@ -438,6 +477,9 @@ class TaskRuntime:
             temperature=self.task.temperature,
             max_tokens=self.task.max_tokens,
             stream=True,
+            response_format=(
+                NOT_GIVEN if self.task.enable_think else {"type": "json_object"}
+            ),
         )
 
         self.log(f"loop stream start")

@@ -18,13 +18,6 @@ from config import (
     MESSAGE_COMPLETE,
     MESSAGE_TYPES,
     MESSAGE_VISION,
-    MODEL_TYPE_API,
-    MODEL_TYPE_AOAI,
-    MODEL_TYPE_DS_OLLAMA,
-    MODEL_TYPE_DS_FOUNDRY,
-    MODEL_TYPE_DS_MODELS,
-    MODEL_TYPE_AOAI_MODELS,
-    MODEL_TYPES,
 )
 
 from template_complete import template_complete
@@ -53,19 +46,6 @@ def create_update(task: Tasks, edit: bool, messages: list):
             return
         if not task.azure_endpoint:
             st.error("endpoint is required.")
-            return
-        if task.model_type == MODEL_TYPE_AOAI:
-            if not task.api_version:
-                st.error("api_version is required.")
-                return
-            if not task.deployment_name:
-                st.error("deployment_name is required.")
-                return
-        if (
-            task.model_type in (MODEL_TYPE_AOAI, MODEL_TYPE_DS_FOUNDRY)
-            and not task.api_key
-        ):
-            st.error("api_key is required.")
             return
 
         if not task.messages:
@@ -160,89 +140,38 @@ def task_form(task: Tasks, edit: bool = False):
             max_value=60 * 60 * 1000,
         )
 
-    col1, col2, col3, col4, col5 = st.columns([1, 2, 1, 1, 1])
+    col1, col2, col3, col4 = st.columns([6, 2, 1, 1])
     with col1:
-        task.model_type = st.selectbox(
-            label="💡 Model Type",
-            options=MODEL_TYPES,
-            index=MODEL_TYPES.index(task.model_type) if task.model_type else 0,
+        task.azure_endpoint = st.text_input(
+            label="Endpoint",
+            value=task.azure_endpoint,
+            placeholder="http://6.6.6.6:30000/v1/chat/completions",
         )
+        with st.container(border=True):
+            st.markdown(
+                "AOAI: `https://xxx.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-10-21`"
+            )
+            st.markdown("API: `http://6.6.6.6:30000/v1/chat/completions`")
+            st.markdown(
+                "AI Founder: `https:/xxx.services.ai.azure.com/models/chat/completions`"
+            )
     with col2:
-        if task.model_type == MODEL_TYPE_AOAI:
-            task.azure_endpoint = st.text_input(
-                label="Azure Endpoint",
-                value=task.azure_endpoint,
-                placeholder="https://xxx.openai.azure.com",
-            )
-        if task.model_type == MODEL_TYPE_DS_OLLAMA:
-            task.azure_endpoint = st.text_input(
-                label="Endpoint",
-                value=task.azure_endpoint,
-            )
-        if task.model_type == MODEL_TYPE_DS_FOUNDRY:
-            task.azure_endpoint = st.text_input(
-                label="Endpoint",
-                value=task.azure_endpoint,
-                placeholder="https://xxxxx.services.ai.azure.com/models",
-            )
-        if task.model_type == MODEL_TYPE_API:
-            task.azure_endpoint = st.text_input(
-                label="Endpoint",
-                value=task.azure_endpoint,
-                placeholder="http://6.6.6.6:8080/v1/completions",
-            )
+        task.model_id = st.text_input(
+            label="Model ID",
+            value=task.model_id,
+        )
     with col3:
-        if task.model_type == MODEL_TYPE_AOAI:
-            task.model_id = st.selectbox(
-                label="Model ID",
-                options=MODEL_TYPE_AOAI_MODELS,
-                index=(
-                    MODEL_TYPE_AOAI_MODELS.index(task.model_id)
-                    if task.model_id and task.model_id in MODEL_TYPE_AOAI_MODELS
-                    else 0
-                ),
-            )
-        if task.model_type == MODEL_TYPE_DS_OLLAMA:
-            task.model_id = st.selectbox(
-                label="Model ID",
-                options=MODEL_TYPE_DS_MODELS,
-                index=(
-                    MODEL_TYPE_DS_MODELS.index(task.model_id)
-                    if task.model_id and task.model_id in MODEL_TYPE_DS_MODELS
-                    else 0
-                ),
-            )
-        if task.model_type == MODEL_TYPE_DS_FOUNDRY:
-            task.model_id = st.text_input(
-                label="Model ID",
-                value=task.model_id,
-            )
-        if task.model_type == MODEL_TYPE_API:
-            task.model_id = st.text_input(
-                label="Model ID",
-                value=task.model_id,
-            )
+        task.stream = st.selectbox(
+            label="Stream",
+            options=[True, False],
+            index=([True, False].index(task.stream) if task.stream else 1),
+        )
     with col4:
-        if task.model_type == MODEL_TYPE_AOAI:
-            task.deployment_name = st.text_input(
-                label="Deployment Name",
-                value=task.deployment_name,
-            )
-        if task.model_type != MODEL_TYPE_AOAI:
-            task.enable_think = st.selectbox(
-                label="Enable Think (DeepSeek)",
-                options=[True, False],
-                index=(
-                    [True, False].index(task.enable_think) if task.enable_think else 1
-                ),
-            )
-    with col5:
-        if task.model_type == MODEL_TYPE_AOAI:
-            task.api_version = st.text_input(
-                label="API Version",
-                value=task.api_version,
-                placeholder="2024-08-01-preview",
-            )
+        task.enable_think = st.selectbox(
+            label="Think (DeepSeek)",
+            options=[True, False],
+            index=([True, False].index(task.enable_think) if task.enable_think else 1),
+        )
 
     try:
         index = MESSAGE_TYPES.index(task.message_type)

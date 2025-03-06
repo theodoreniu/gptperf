@@ -136,12 +136,9 @@ def update_task(task_update: Tasks, messages: list):
 
         task.name = task_update.name
         task.desc = task_update.desc
-        task.model_type = task_update.model_type
         task.model_id = task_update.model_id
         task.azure_endpoint = task_update.azure_endpoint
         task.api_key = task_update.api_key
-        task.api_version = task_update.api_version
-        task.deployment_name = task_update.deployment_name
         task.timeout = task_update.timeout
         task.request_per_thread = task_update.request_per_thread
         task.threads = task_update.threads
@@ -151,6 +148,7 @@ def update_task(task_update: Tasks, messages: list):
         task.message_type = task_update.message_type
         task.temperature = task_update.temperature
         task.max_tokens = task_update.max_tokens
+        task.stream = task_update.stream
 
         session.commit()
     except Exception as e:
@@ -277,7 +275,6 @@ def load_all_tasks() -> List[Tasks]:
             .with_entities(
                 Tasks.id,
                 Tasks.name,
-                Tasks.model_type,
                 Tasks.model_id,
                 Tasks.status,
                 Tasks.created_at,
@@ -292,7 +289,6 @@ def load_all_tasks() -> List[Tasks]:
             .with_entities(
                 Tasks.id,
                 Tasks.name,
-                Tasks.model_type,
                 Tasks.model_id,
                 Tasks.status,
                 Tasks.created_at,
@@ -375,13 +371,7 @@ def load_all_logs(task_id: int, request_id: str):
 def task_dequeue() -> Tasks | None:
     session = get_mysql_session()
 
-    task = (
-        session.query(Tasks)
-        .filter(Tasks.status == 1)
-        .order_by(Tasks.created_at.asc())
-        .limit(1)
-        .first()
-    )
+    task = session.query(Tasks).filter(Tasks.status == 1).limit(1).first()
 
     session.close()
 

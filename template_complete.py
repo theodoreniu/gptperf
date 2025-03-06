@@ -17,7 +17,7 @@ def template_complete(messages):
     st.write("Current Messages:")
 
     for idx, message in enumerate(st.session_state.messages):
-        col1, col2, col3, col4 = st.columns([1, 3, 1, 1])
+        col1, col2, col3 = st.columns([1, 4, 1])
 
         with col1:
             role = st.selectbox(
@@ -32,13 +32,9 @@ def template_complete(messages):
                 "Message Content:", value=message["content"], key=f"content_{idx}"
             )
 
+        st.session_state.messages[idx] = {"role": role, "content": content}
+
         with col3:
-            if st.button("Update", key=f"update_{idx}"):
-
-                st.session_state.messages[idx] = {"role": role, "content": content}
-                st.success("Updated")
-
-        with col4:
             if st.button("Delete", key=f"delete_{idx}"):
                 st.session_state.messages.pop(idx)
                 st.success("Deleted")

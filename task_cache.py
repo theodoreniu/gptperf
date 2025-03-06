@@ -8,6 +8,9 @@ from tables import (
     create_log_table_class,
     create_request_table_class,
 )
+from typing import (
+    Optional,
+)
 
 requests_queue_name = "requests"
 chunks_queue_name = "chunks"
@@ -48,12 +51,14 @@ class TaskCache:
         task_json = self.serialize(task)
         self.redis.rpush(requests_queue_name, task_json)
 
-    def request_dequeue(self):
-        if task_json := self.redis.lpop(requests_queue_name):
-            task_dict = json.loads(task_json.decode("utf-8"))
-            Requests = create_request_table_class(task_dict["task_id"])
-            return self.deserialize(task_dict, Requests())
-        return None
+    def request_dequeue(self, count: Optional[int] = None):
+        result = []
+        if requests_json := self.redis.lpop(requests_queue_name, count):
+            for request_json in requests_json:
+                request_dict = json.loads(request_json.decode("utf-8"))
+                Requests = create_request_table_class(request_dict["task_id"])
+                result.append(self.deserialize(request_dict, Requests()))
+        return result
 
     def request_len(self) -> int:
         return self.redis.llen(requests_queue_name)
@@ -62,12 +67,14 @@ class TaskCache:
         task_json = self.serialize(task)
         self.redis.rpush(chunks_queue_name, task_json)
 
-    def chunk_dequeue(self):
-        if task_json := self.redis.lpop(chunks_queue_name):
-            task_dict = json.loads(task_json.decode("utf-8"))
-            Chunks = create_chunk_table_class(task_dict["task_id"])
-            return self.deserialize(task_dict, Chunks())
-        return None
+    def chunk_dequeue(self, count: Optional[int] = None):
+        result = []
+        if chunks_json := self.redis.lpop(chunks_queue_name, count):
+            for chunk_json in chunks_json:
+                chunk_dict = json.loads(chunk_json.decode("utf-8"))
+                Chunks = create_chunk_table_class(chunk_dict["task_id"])
+                result.append(self.deserialize(chunk_dict, Chunks()))
+        return result
 
     def chunk_len(self) -> int:
         return self.redis.llen(chunks_queue_name)
@@ -76,12 +83,14 @@ class TaskCache:
         task_json = self.serialize(task)
         self.redis.rpush(logs_queue_name, task_json)
 
-    def log_dequeue(self):
-        if task_json := self.redis.lpop(logs_queue_name):
-            task_dict = json.loads(task_json.decode("utf-8"))
-            Logs = create_log_table_class(task_dict["task_id"])
-            return self.deserialize(task_dict, Logs())
-        return None
+    def log_dequeue(self, count: Optional[int] = None):
+        result = []
+        if logs_json := self.redis.lpop(logs_queue_name, count):
+            for log_json in logs_json:
+                log_dict = json.loads(log_json.decode("utf-8"))
+                Logs = create_log_table_class(log_dict["task_id"])
+                result.append(self.deserialize(log_dict, Logs()))
+        return result
 
     def log_len(self) -> int:
         return self.redis.llen(logs_queue_name)

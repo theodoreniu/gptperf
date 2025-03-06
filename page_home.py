@@ -44,8 +44,8 @@ def create_task():
         timeout=30000,
         threads=1,
         request_per_thread=1,
+        stream=1,
         user_id=current_user().id,
-        deployment_type="",
         messages=DEFAULT_MESSAGES_COMPLETE,
         message_type=MESSAGE_COMPLETE,
     )

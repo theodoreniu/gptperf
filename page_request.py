@@ -81,23 +81,17 @@ def request_page(task_id: int, request_id: str):
         with col4:
             st.markdown(f"completed_at_fmt: `{request.completed_at_fmt}`")
 
-        st.markdown("input:")
-        st.text_area(
-            label="input: ",
-            value=json.dumps(task.messages, indent=2, ensure_ascii=False),
-            height=250,
-            disabled=True,
-            label_visibility="hidden",
-        )
+        st.markdown("Request Data:")
+        with st.container(border=True, height=300):
+            st.json(request.data)
 
-        st.markdown("output:")
-        st.text_area(
-            label="response: ",
-            value=request.response,
-            height=250,
-            disabled=True,
-            label_visibility="hidden",
-        )
+        st.markdown("Content:")
+        with st.container(border=True, height=300):
+            try:
+                data = json.loads(request.response)
+                st.json(data)
+            except Exception as e:
+                st.text(request.response)
 
     render_chunks(task_id, request_id, "🚀 Chunks")
 

@@ -33,7 +33,7 @@ def template_vision(messages: list):
     st.write("Current Messages:")
 
     for idx, message in enumerate(st.session_state.messages):
-        col1, col2, col3, col4 = st.columns([2, 8, 1, 1])
+        col1, col2, col3 = st.columns([1, 4, 1])
 
         with col1:
             role = st.selectbox(
@@ -94,12 +94,9 @@ def template_vision(messages: list):
                             "content": new_content,
                         }
 
-        with col3:
-            if st.button("Update", key=f"update_{idx}"):
-                st.session_state.messages[idx] = {"role": role, "content": new_content}
-                st.success("Updated")
+        st.session_state.messages[idx] = {"role": role, "content": new_content}
 
-        with col4:
+        with col3:
             if st.button("Delete", key=f"delete_{idx}"):
                 st.session_state.messages.pop(idx)
                 st.success("Deleted")

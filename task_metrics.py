@@ -4,7 +4,6 @@ import numpy as np
 import streamlit as st
 from task_loads import sql_query
 from tables import Tasks
-from config import NOT_SUPPORT_STREAM_MODELS
 from logger import logger
 
 
@@ -64,7 +63,7 @@ def task_metrics(task: Tasks):
     Returns:
         dict: Collection of performance metrics
     """
-    stream = task.model_id not in NOT_SUPPORT_STREAM_MODELS
+    stream = bool(task.stream)
 
     chunks = f"chunks_{task.id}"
     requests = f"requests_{task.id}"

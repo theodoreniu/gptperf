@@ -41,7 +41,9 @@ def task_executor(task: Tasks):
 
             for future in futures:
                 try:
-                    logger.info(future.result())
+                    result = future.result()
+                    if result:
+                        logger.info(result)
                 except Exception as e:
                     logger.error(f"Threads Error: {e}", exc_info=True)
 

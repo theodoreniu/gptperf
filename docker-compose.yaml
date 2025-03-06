@@ -40,6 +40,7 @@ services:
       context: .
       dockerfile: Dockerfile.worker
     command: python observer_queue.py
+    scale: 9
     volumes:
       - ./:/app
     working_dir: /app

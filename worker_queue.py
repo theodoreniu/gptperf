@@ -23,7 +23,6 @@ def check_status(db: Session, task_id: int):
             .values(status=3, error_message="All requests failed")
         )
         db.commit()
-
         if task.feishu_token:
             feishu_text(
                 f"All requests failed task: {task.name}: {APP_URL}/?task_id={task.id}",
@@ -51,43 +50,42 @@ if __name__ == "__main__":
 
     while True:
 
+        def persist_to_db(items):
+            if len(items) > 0:
+                for item in items:
+                    db.add(copy.deepcopy(item))
+                db.commit()
+                logger.info(f"Persisted {len(items)} items to db")
+
         try:
-            chunk = cache.chunk_dequeue()
-            if chunk:
-                # logger.info(chunk.__dict__)
-                db.add(copy.deepcopy(chunk))
-                db.commit()
+            chunks = cache.chunk_dequeue(20)
+            persist_to_db(chunks)
 
-            log = cache.log_dequeue()
-            if log:
-                # logger.info(log.__dict__)
-                db.add(copy.deepcopy(log))
-                db.commit()
+            logs = cache.log_dequeue(20)
+            persist_to_db(logs)
 
-            request = cache.request_dequeue()
-            if request:
-                # logger.info(request.__dict__)
-                db.add(copy.deepcopy(request))
-                db.commit()
+            requests = cache.request_dequeue(10)
+            persist_to_db(requests)
 
+            for request in requests:
                 if request.success == 1:
                     db.execute(
                         update(Tasks)
                         .where(Tasks.id == request.task_id)
                         .values(request_succeed=Tasks.request_succeed + 1)
                     )
-                    db.commit()
                 else:
                     db.execute(
                         update(Tasks)
                         .where(Tasks.id == request.task_id)
                         .values(request_failed=Tasks.request_failed + 1)
                     )
-                    db.commit()
 
-                check_status(db, request.task_id)
+            if len(requests) > 0:
+                db.commit()
+                check_status(db, requests[0].task_id)
 
-            if not chunk and not request:
+            if len(chunks) == 0 and len(logs) == 0 and len(requests) == 0:
                 sleep(1)
 
         except Exception as e:
